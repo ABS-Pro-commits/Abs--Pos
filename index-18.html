@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ABS POS - Billing & Invoice V2</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f4f7fb;--card:#fff;--ink:#152033;--muted:#68748a;--primary:#1457d9;--primary2:#0d47b5;--green:#16865c;--red:#c63737;--amber:#b96d00;--line:#dde4ef;--soft:#eaf2ff}
+*{box-sizing:border-box} body{margin:0;font-family:Inter,Arial,sans-serif;background:linear-gradient(135deg,#eef5ff,#f8fbff 46%,#eef8f3);color:var(--ink)}
+header{background:linear-gradient(110deg,#0d2f70,#1457d9 58%,#16865c);color:white;padding:16px 18px;position:sticky;top:0;z-index:10;box-shadow:0 3px 14px #10264a33}
+.brand{display:flex;justify-content:space-between;align-items:center;gap:12px}.brand h1{font-size:20px;margin:0}.brand small{opacity:.9}
+nav{display:flex;gap:8px;overflow-x:auto;padding:10px 0 0}nav button{white-space:nowrap;border:0;background:#ffffff20;color:#fff;padding:9px 12px;border-radius:10px;font-weight:700}nav button.active{background:white;color:#124bad}
+main{max-width:1180px;margin:auto;padding:16px}.page{display:none}.page.active{display:block}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.card{background:var(--card);border:1px solid #e6ebf3;border-radius:16px;padding:16px;box-shadow:0 8px 24px #22375b10;margin-bottom:14px}
+.card h2,.card h3{margin-top:0}.kpi{font-size:28px;font-weight:800}.muted{color:var(--muted);font-size:13px}
+label{display:block;font-size:12px;font-weight:700;color:#4d5b72;margin:8px 0 5px}
+input,select,textarea{width:100%;border:1px solid #ccd6e5;border-radius:10px;padding:10px 11px;font-size:14px;background:#fff}input:focus,select:focus{outline:2px solid #b9d0ff;border-color:#5a8bea}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row>*{flex:1}.btn{border:0;border-radius:10px;padding:10px 13px;font-weight:800;cursor:pointer;background:var(--primary);color:#fff}.btn.secondary{background:#edf3ff;color:#154da7}.btn.green{background:var(--green)}.btn.red{background:var(--red)}.btn.amber{background:var(--amber)}.btn.gray{background:#5c6879}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px;border-bottom:1px solid #e7ebf1;text-align:left}th{background:#f4f7fb;position:sticky;top:0}.tablewrap{overflow:auto;max-height:450px;border:1px solid #e4e9f1;border-radius:12px}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800;background:#edf3ff;color:#174da3}.badge.green{background:#e7f7f0;color:#0c7852}.badge.red{background:#fdecec;color:#a52c2c}.badge.amber{background:#fff3dc;color:#9a5d00}
+.poslayout{display:grid;grid-template-columns:40% 60%;gap:14px}.scanbox{background:linear-gradient(160deg,#eaf2ff,#f8fbff);border:2px dashed #8bb0f0;border-radius:15px;padding:14px}
+.billbox{background:linear-gradient(160deg,#fffaf0,#fff);border:1px solid #f0dfb8;border-radius:15px;padding:14px}.total{font-size:26px;font-weight:900;text-align:right}.tiny{font-size:11px}
+#reader{width:100%;margin-top:10px}.qrpreview{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-top:12px}.qrlabel{border:1px dashed #888;border-radius:8px;padding:10px;background:#fff;text-align:center;page-break-inside:avoid}.qrlabel .name{font-weight:800;font-size:12px}.qrlabel .mrp{font-size:14px;font-weight:900}.qrlabel .serial{font-size:9px;word-break:break-all}
+.toast{display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#172238;color:#fff;padding:12px 18px;border-radius:10px;z-index:99;box-shadow:0 6px 24px #0004}
+@media(max-width:760px){.grid,.grid3,.poslayout{grid-template-columns:1fr}.brand{align-items:flex-start}.brand small{display:none}main{padding:10px}.card{padding:12px}.poslayout{gap:10px}}
+@media print{header,.noprint,#toast{display:none!important}body{background:#fff}.page{display:none!important}.card{box-shadow:none;border:0}.qrpreview{grid-template-columns:repeat(3,1fr)}body.print-qr #qrPage{display:block!important}body.print-invoice #invoicePrint{display:block!important}#invoicePrint{font-family:Arial,sans-serif;color:#000;padding:8px}.invoice-head{text-align:center;border-bottom:1px dashed #333;padding-bottom:8px;margin-bottom:8px}.invoice-table{width:100%;border-collapse:collapse}.invoice-table th,.invoice-table td{padding:5px 3px;border-bottom:1px solid #ddd;font-size:12px}.invoice-total{font-size:18px;font-weight:800;text-align:right;margin-top:10px}.invoice-meta{font-size:12px;line-height:1.6}.invoice-footer{text-align:center;font-size:11px;margin-top:14px;border-top:1px dashed #333;padding-top:8px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div><h1>ABS POS • Billing & Invoice V2</h1><small>One physical product = one permanent unique QR</small></div><div id="clock" class="tiny"></div></div>
+  <nav id="nav">
+    <button class="active" onclick="showPage('dashboardPage',this)">Dashboard</button>
+    <button onclick="showPage('posPage',this)">POS Billing</button>
+    <button onclick="showPage('scanPage',this)">Scanning</button>
+    <button onclick="showPage('qrPage',this)">QR Generate</button>
+    <button onclick="showPage('inventoryPage',this)">QR / Stock</button>
+    <button onclick="showPage('mastersPage',this)">Masters</button>
+    <button onclick="showPage('salesPage',this)">Sales</button>
+  </nav>
+</header>
+
+<main>
+<section id="dashboardPage" class="page active">
+  <div class="grid3">
+    <div class="card"><div class="muted">Unique QRs Generated</div><div class="kpi" id="kpiQR">0</div></div>
+    <div class="card"><div class="muted">Available Units</div><div class="kpi" id="kpiStock">0</div></div>
+    <div class="card"><div class="muted">Today's Sales</div><div class="kpi" id="kpiSales">₹0</div></div>
+  </div>
+  <div class="card">
+    <h2>QR Lifecycle</h2>
+    <div class="row">
+      <span class="badge">GENERATED</span><span>→</span><span class="badge">PRINTED</span><span>→</span>
+      <span class="badge green">IN STOCK</span><span>→</span><span class="badge amber">SOLD</span><span>→</span>
+      <span class="badge">INCENTIVE SCANNED</span><span>→</span><span class="badge green">REDEEMED</span>
+    </div>
+    <p class="muted">The QR stores only a secure unique token. Product, price, stock and future incentive rules remain in the system and can change without reprinting the QR.</p>
+  </div>
+</section>
+
+<section id="posPage" class="page">
+  <div class="grid">
+    <div class="card">
+      <h2>Customer & Payment</h2>
+      <label>Mobile No.</label>
+      <input id="posMobile" inputmode="numeric" maxlength="15" placeholder="Enter mobile to retrieve customer" oninput="lookupCustomerByMobile()">
+      <div class="row">
+        <div><label>Customer Name</label><input id="posCustomerName" placeholder="Customer name"></div>
+        <div><label>Customer Category</label><select id="posCategory" onchange="renderCart()"><option>A</option><option>B</option><option>C</option><option>D</option></select></div>
+      </div>
+      <label>Saved Customer</label>
+      <select id="posCustomer" onchange="selectPOSCustomer()"></select>
+      <div id="customerLookupMsg" class="muted" style="margin-top:6px"></div>
+      <div class="row">
+        <div><label>Payment Method</label><select id="paymentMethod"><option>Cash</option><option>UPI</option><option>Card</option><option>Credit</option><option>Bank Transfer</option><option>Mixed</option></select></div>
+        <div><label>Paid Amount</label><input id="paidAmount" type="number" min="0" step="0.01" placeholder="0.00" oninput="renderCart()"></div>
+      </div>
+      <p class="muted">For a new mobile number, complete the customer name/category and the customer will be saved automatically with the bill.</p>
+    </div>
+    <div class="card billbox">
+      <div class="row"><div><h2 style="margin:0">Current Bill</h2><div class="muted" id="billNo"></div></div><button class="btn gray" onclick="clearCart()">Clear</button></div>
+      <div class="tablewrap" style="max-height:360px;margin-top:12px">
+        <table><thead><tr><th>Item</th><th>MRP</th><th>Qty</th><th>Rate</th><th>Disc</th><th>Amount</th><th></th></tr></thead><tbody id="cartRows"></tbody></table>
+      </div>
+      <div style="margin-top:12px"><div class="muted" style="text-align:right">Bill Total</div><div class="total" id="billTotal">₹0</div><div class="muted" id="balanceText" style="text-align:right;margin-top:4px">Balance: ₹0</div></div>
+      <div class="row" style="margin-top:10px"><button class="btn green" onclick="completeSale(false)">Complete Sale</button><button class="btn" onclick="completeSale(true)">Complete + Print</button></div>
+    </div>
+  </div>
+</section>
+
+<section id="scanPage" class="page">
+  <div class="grid">
+    <div class="card scanbox">
+      <h2>Scan Product</h2>
+      <p class="muted">Scanning is kept separate from billing. Every successful scan is added to the current POS bill.</p>
+      <label>Scan Unique QR</label>
+      <div class="row"><input id="scanToken" placeholder="Scan QR / enter token" onkeydown="if(event.key==='Enter')scanPOS()"><button class="btn" onclick="scanPOS()">Add</button></div>
+      <button class="btn secondary" style="margin-top:8px;width:100%" onclick="toggleCamera()">📷 Camera Scan</button>
+      <div id="readerWrap" style="display:none"><div id="reader"></div></div>
+    </div>
+    <div class="card">
+      <h2>Manual / Exception Entry</h2>
+      <label>Item</label><select id="manualItem"></select>
+      <div class="row"><input id="manualQty" type="number" min="1" value="1"><button class="btn secondary" onclick="addManualItem()">Add Item</button></div>
+      <div style="margin-top:14px" class="row"><button class="btn" onclick="showPage('posPage',document.querySelector("button[onclick*=\'posPage\']"))">Go to Billing</button><div class="muted" id="scanCartCount">0 units in current bill</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="qrPage" class="page">
+  <div class="card noprint">
+    <h2>Generate Unique Product QR</h2>
+    <div class="grid">
+      <div><label>Item</label><select id="qrItem"></select></div>
+      <div><label>Quantity / Pieces</label><input id="qrQty" type="number" min="1" max="500" value="10"></div>
+      <div><label>Batch No.</label><input id="qrBatch" placeholder="e.g. AUG26-01"></div>
+      <div><label>Packed / Received Date</label><input id="qrDate" type="date"></div>
+    </div>
+    <div class="row" style="margin-top:12px"><button class="btn" onclick="generateQRBatch()">Generate Unique QRs</button><button class="btn secondary" onclick="printQRLabels()">Print Labels</button><button class="btn secondary" onclick="exportQRs()">Download QR Register</button></div>
+  </div>
+  <div class="card"><h3>Label Preview</h3><div class="qrpreview" id="qrPreview"><div class="muted">Generate a batch to preview printable labels.</div></div></div>
+</section>
+
+<section id="inventoryPage" class="page">
+  <div class="card">
+    <div class="row"><div><h2 style="margin:0">Unique QR / Stock Register</h2></div><input id="qrSearch" placeholder="Search token, serial, item, batch..." oninput="renderQRRegister()"></div>
+    <div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>Serial</th><th>Item</th><th>Batch</th><th>Status</th><th>Sale</th><th>Incentive</th></tr></thead><tbody id="qrRows"></tbody></table></div>
+  </div>
+</section>
+
+<section id="mastersPage" class="page">
+  <div class="grid">
+    <div class="card">
+      <h2>Item Master</h2>
+      <div class="grid">
+        <div><label>Item Code</label><input id="mItemCode"></div>
+        <div><label>Item Name</label><input id="mItemName"></div>
+        <div><label>MRP</label><input id="mItemMRP" type="number"></div>
+        <div><label>Base Selling Price</label><input id="mItemPrice" type="number"></div>
+      </div>
+      <button class="btn" style="margin-top:10px" onclick="addItem()">Add / Update Item</button>
+      <div class="tablewrap" style="max-height:240px;margin-top:10px"><table><thead><tr><th>Code</th><th>Name</th><th>MRP</th><th>Base</th></tr></thead><tbody id="itemRows"></tbody></table></div>
+    </div>
+    <div class="card">
+      <h2>Customer Master</h2>
+      <div class="grid">
+        <div><label>Customer Code</label><input id="mCustCode"></div>
+        <div><label>Name</label><input id="mCustName"></div>
+        <div><label>Mobile</label><input id="mCustMobile"></div>
+        <div><label>Area</label><input id="mCustArea"></div>
+        <div><label>Category</label><select id="mCustCategory"><option>A</option><option>B</option><option>C</option><option>D</option></select></div>
+      </div>
+      <button class="btn" style="margin-top:10px" onclick="addCustomer()">Add / Update Customer</button>
+      <div class="tablewrap" style="max-height:240px;margin-top:10px"><table><thead><tr><th>Code</th><th>Name</th><th>Mobile</th><th>Cat.</th><th>Area</th></tr></thead><tbody id="customerRows"></tbody></table></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Customer Category Pricing</h2>
+    <p class="muted">Discount is applied on MRP. You can change these percentages anytime; existing QR labels do not need to change.</p>
+    <div class="grid3">
+      <div><label>A Discount %</label><input id="discA" type="number"></div>
+      <div><label>B Discount %</label><input id="discB" type="number"></div>
+      <div><label>C Discount %</label><input id="discC" type="number"></div>
+      <div><label>D Discount %</label><input id="discD" type="number"></div>
+    </div>
+    <button class="btn" style="margin-top:10px" onclick="saveDiscounts()">Save Category Pricing</button>
+  </div>
+</section>
+
+<section id="salesPage" class="page">
+  <div class="card">
+    <div class="row"><h2 style="margin:0">Sales History</h2><button class="btn secondary" onclick="exportSales()">Download Sales XLS</button></div>
+    <div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>Bill</th><th>Date</th><th>Customer</th><th>Payment</th><th>Items</th><th>Amount</th><th></th></tr></thead><tbody id="salesRows"></tbody></table></div>
+  </div>
+</section>
+
+<section id="invoicePrint" style="display:none">
+  <div class="invoice-head"><h2 style="margin:0">ABS CORP</h2><div>POS INVOICE</div></div>
+  <div id="invoicePrintBody"></div>
+</section>
+</main>
+<div id="toast" class="toast"></div>
+
+<script>
+const KEY='abs_pos_unique_qr_v1';
+let db=JSON.parse(localStorage.getItem(KEY)||'null')||{
+ items:[
+  {code:'ABS001',name:'Sample Brake Shoe',mrp:200,basePrice:130},
+  {code:'ABS002',name:'Sample Valve Seal',mrp:80,basePrice:55},
+  {code:'ABS003',name:'Sample Cable',mrp:250,basePrice:170}
+ ],
+ customers:[
+  {code:'C001',name:'Demo Retailer',mobile:'',area:'Varanasi',category:'A'},
+  {code:'C002',name:'Demo Mechanic',mobile:'',area:'Varanasi',category:'C'}
+ ],
+ discounts:{A:35,B:30,C:25,D:20},
+ qrs:[],sales:[]
+};
+let cart=[]; let camera=null; let lastGenerated=[]; let lastSale=null;
+db.customers=db.customers||[];db.sales=db.sales||[];db.qrs=db.qrs||[];db.items=db.items||[];
+
+function save(){localStorage.setItem(KEY,JSON.stringify(db)); refresh();}
+function money(n){return '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2});}
+function toast(t){let e=document.getElementById('toast');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',2400)}
+function showPage(id,btn){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');refresh();}
+function uniqueToken(){const a=new Uint8Array(16);crypto.getRandomValues(a);return 'ABS-'+Array.from(a).map(b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();}
+function newBillNo(){return 'POS-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+String(db.sales.length+1).padStart(4,'0');}
+function sellingRate(item,cat){let d=Number(db.discounts[cat]||0);return Math.round((Number(item.mrp||0)*(1-d/100))*100)/100;}
+
+function refresh(){
+ document.getElementById('kpiQR').textContent=db.qrs.length;
+ document.getElementById('kpiStock').textContent=db.qrs.filter(q=>q.status==='IN STOCK'||q.status==='PRINTED'||q.status==='GENERATED').length;
+ let today=new Date().toISOString().slice(0,10),ts=db.sales.filter(s=>s.at.slice(0,10)===today).reduce((a,s)=>a+s.total,0);document.getElementById('kpiSales').textContent=money(ts);
+ const itemOpts=db.items.map(i=>`<option value="${i.code}">${i.code} — ${i.name}</option>`).join('');
+ ['manualItem','qrItem'].forEach(id=>{let e=document.getElementById(id);if(e)e.innerHTML=itemOpts});
+ let cs=document.getElementById('posCustomer');if(cs){let old=cs.value;cs.innerHTML='<option value="">New / Walk-in Customer</option>'+db.customers.map(c=>`<option value="${c.code}">${c.name} • ${c.mobile||'No mobile'} • ${c.category}</option>`).join('');if([...cs.options].some(o=>o.value===old))cs.value=old}
+ document.getElementById('itemRows').innerHTML=db.items.map(i=>`<tr><td>${i.code}</td><td>${i.name}</td><td>${money(i.mrp)}</td><td>${money(i.basePrice)}</td></tr>`).join('');
+ document.getElementById('customerRows').innerHTML=db.customers.map(c=>`<tr><td>${c.code}</td><td>${c.name}</td><td>${c.mobile||''}</td><td><span class="badge">${c.category}</span></td><td>${c.area||''}</td></tr>`).join('');
+ ['A','B','C','D'].forEach(c=>document.getElementById('disc'+c).value=db.discounts[c]??0);
+ document.getElementById('billNo').textContent=newBillNo();
+ renderCart();renderQRRegister();renderSales();
+}
+function addItem(){let code=mItemCode.value.trim().toUpperCase(),name=mItemName.value.trim(),mrp=+mItemMRP.value,basePrice=+mItemPrice.value;if(!code||!name||mrp<=0){toast('Enter item code, name and MRP');return}let x=db.items.find(i=>i.code===code);if(x)Object.assign(x,{name,mrp,basePrice});else db.items.push({code,name,mrp,basePrice});['mItemCode','mItemName','mItemMRP','mItemPrice'].forEach(id=>document.getElementById(id).value='');save();toast('Item saved')}
+function addCustomer(){let code=mCustCode.value.trim().toUpperCase(),name=mCustName.value.trim(),category=mCustCategory.value,mobile=mCustMobile.value.trim(),area=mCustArea.value.trim();if(!code||!name){toast('Enter customer code and name');return}let x=db.customers.find(c=>c.code===code);if(x)Object.assign(x,{name,category,mobile,area});else db.customers.push({code,name,category,mobile,area});['mCustCode','mCustName','mCustMobile','mCustArea'].forEach(id=>document.getElementById(id).value='');save();toast('Customer saved')}
+function saveDiscounts(){['A','B','C','D'].forEach(c=>db.discounts[c]=Math.max(0,Math.min(100,+document.getElementById('disc'+c).value||0)));save();toast('Category pricing saved')}
+
+function normalizeMobile(v){return String(v||'').replace(/\D/g,'').slice(-10)}
+function lookupCustomerByMobile(){
+ let mobile=normalizeMobile(posMobile.value),msg=document.getElementById('customerLookupMsg');
+ if(mobile.length<10){if(msg)msg.textContent='Enter 10-digit mobile number';return}
+ let c=db.customers.find(x=>normalizeMobile(x.mobile)===mobile);
+ if(c){posCustomer.value=c.code;posCustomerName.value=c.name||'';posCategory.value=c.category||'D';if(msg)msg.textContent=`Customer found: ${c.name} • Category ${c.category}`;renderCart()}
+ else{posCustomer.value='';if(msg)msg.textContent='New customer — enter name and category';renderCart()}
+}
+function selectPOSCustomer(){let c=db.customers.find(x=>x.code===posCustomer.value);if(c){posMobile.value=c.mobile||'';posCustomerName.value=c.name||'';posCategory.value=c.category||'D';customerLookupMsg.textContent=`Customer loaded • ${c.mobile||'No mobile'} • Category ${c.category}`}else customerLookupMsg.textContent='';renderCart()}
+function getPOSCustomer(){
+ let mobile=normalizeMobile(posMobile?.value),name=(posCustomerName?.value||'').trim(),cat=posCategory?.value||'D';
+ let c=db.customers.find(x=>x.code===posCustomer?.value)||db.customers.find(x=>mobile&&normalizeMobile(x.mobile)===mobile);
+ if(c){c.name=name||c.name;c.mobile=mobile||c.mobile;c.category=cat||c.category;return c}
+ if(mobile&&name){let code='C'+String(db.customers.length+1).padStart(4,'0');while(db.customers.some(x=>x.code===code))code='C'+String(Date.now()).slice(-6);c={code,name,mobile,area:'',category:cat};db.customers.push(c);posCustomer.value=code;return c}
+ return null;
+}
+function printQRLabels(){document.body.classList.remove('print-invoice');document.body.classList.add('print-qr');window.print();setTimeout(()=>document.body.classList.remove('print-qr'),300)}
+function buildInvoiceHTML(s){
+ let paid=Number(s.paidAmount||0),balance=Math.max(0,Number(s.total||0)-paid);
+ let rows=s.lines.map((l,i)=>`<tr><td>${i+1}. ${l.name}<div class="tiny">${l.itemCode}</div></td><td>${l.qty}</td><td>${money(l.rate)}</td><td>${money(l.amount)}</td></tr>`).join('');
+ return `<div class="invoice-meta"><b>Invoice:</b> ${s.bill}<br><b>Date:</b> ${new Date(s.at).toLocaleString()}<br><b>Customer:</b> ${s.customerName}<br><b>Mobile:</b> ${s.mobile||'—'} &nbsp; <b>Category:</b> ${s.category}</div><table class="invoice-table" style="margin-top:8px"><thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${rows}</tbody></table><div class="invoice-total">Total: ${money(s.total)}</div><div class="invoice-meta" style="text-align:right"><b>Payment:</b> ${s.paymentMethod}<br><b>Paid:</b> ${money(paid)}<br><b>Balance:</b> ${money(balance)}</div><div class="invoice-footer">Thank you for your business</div>`;
+}
+function printSale(s){if(!s)return;invoicePrintBody.innerHTML=buildInvoiceHTML(s);document.body.classList.remove('print-qr');document.body.classList.add('print-invoice');window.print();setTimeout(()=>document.body.classList.remove('print-invoice'),300)}
+function generateQRBatch(){
+ let code=qrItem.value,qty=Math.min(500,Math.max(1,+qrQty.value||1)),batch=qrBatch.value.trim()||('B'+Date.now()),date=qrDate.value||new Date().toISOString().slice(0,10),item=db.items.find(i=>i.code===code);
+ if(!item){toast('Select item');return}
+ lastGenerated=[];
+ for(let n=0;n<qty;n++){let token=uniqueToken();let rec={token,serial:'ABS'+Date.now().toString(36).toUpperCase()+String(n+1).padStart(3,'0'),itemCode:code,batch,packedDate:date,status:'GENERATED',printed:false,sold:false,soldAt:null,saleBill:null,incentiveStatus:'NOT CLAIMED',incentiveUser:null,incentiveAt:null};db.qrs.push(rec);lastGenerated.push(rec)}
+ save();renderQRPreview();toast(qty+' unique QR codes generated');
+}
+function renderQRPreview(){
+ let box=document.getElementById('qrPreview');box.innerHTML='';
+ if(!lastGenerated.length){box.innerHTML='<div class="muted">Generate a batch to preview printable labels.</div>';return}
+ lastGenerated.forEach((q,ix)=>{let item=db.items.find(i=>i.code===q.itemCode),d=document.createElement('div');d.className='qrlabel';d.innerHTML=`<div class="name">${item?.name||q.itemCode}</div><div class="mrp">MRP ${money(item?.mrp)}</div><div id="qr_${ix}" style="display:flex;justify-content:center;margin:7px"></div><div class="serial">${q.serial}</div><div class="tiny">Scan for product / rewards</div>`;box.appendChild(d);new QRCode(document.getElementById('qr_'+ix),{text:q.token,width:105,height:105,correctLevel:QRCode.CorrectLevel.M});q.printed=true;if(q.status==='GENERATED')q.status='PRINTED'});save();
+}
+function exportQRs(){let rows=db.qrs.map(q=>({Serial:q.serial,Token:q.token,'Item Code':q.itemCode,Batch:q.batch,'Packed Date':q.packedDate,Status:q.status,'Sale Bill':q.saleBill||'','Incentive Status':q.incentiveStatus}));downloadXLS(rows,'ABS_Unique_QR_Register.xlsx','QR Register')}
+
+function addManualItem(){let code=manualItem.value,qty=Math.max(1,+manualQty.value||1);for(let n=0;n<qty;n++)cart.push({itemCode:code,token:null});renderCart();}
+function scanPOS(){
+ let token=scanToken.value.trim().toUpperCase(); if(!token)return;
+ let q=db.qrs.find(x=>x.token===token);
+ if(!q){toast('QR not found in ABS register');scanToken.select();return}
+ if(q.sold){toast('Already sold on '+(q.saleBill||'earlier bill'));scanToken.select();return}
+ if(cart.some(x=>x.token===token)){toast('This physical piece is already in current bill');return}
+ cart.push({itemCode:q.itemCode,token:q.token});scanToken.value='';renderCart();toast('Product added');
+}
+function renderCart(){
+ let cust=db.customers.find(c=>c.code===posCustomer?.value),cat=posCategory?.value||cust?.category||'D';
+ let catEl=document.getElementById('custCategory');if(catEl)catEl.textContent=`Category ${cat} • ${db.discounts[cat]}% discount on MRP`;
+ let groups={};cart.forEach(x=>{let k=x.itemCode;if(!groups[k])groups[k]={itemCode:k,qty:0,tokens:[]};groups[k].qty++;if(x.token)groups[k].tokens.push(x.token)});
+ let total=0;cartRows.innerHTML=Object.values(groups).map(g=>{let i=db.items.find(x=>x.code===g.itemCode);if(!i)return'';let rate=sellingRate(i,cat),amt=rate*g.qty;total+=amt;return `<tr><td><b>${i.name}</b><div class="tiny">${i.code}${g.tokens.length?' • '+g.tokens.length+' traced':''}</div></td><td>${money(i.mrp)}</td><td>${g.qty}</td><td>${money(rate)}</td><td>${db.discounts[cat]}%</td><td><b>${money(amt)}</b></td><td><button class="btn red" style="padding:5px 8px" onclick="removeOne('${i.code}')">−</button></td></tr>`}).join('')||'<tr><td colspan="7" class="muted">Scan a product from the Scanning screen to begin billing.</td></tr>';
+ billTotal.textContent=money(total);let paid=Number(paidAmount?.value||0);if(balanceText)balanceText.textContent='Balance: '+money(Math.max(0,total-paid));if(scanCartCount)scanCartCount.textContent=cart.length+' units in current bill';
+}
+function removeOne(code){let ix=cart.map(x=>x.itemCode).lastIndexOf(code);if(ix>=0)cart.splice(ix,1);renderCart()}
+function clearCart(){cart=[];renderCart()}
+function completeSale(printAfter=false){
+ if(!cart.length){toast('Bill is empty');return}
+ let cust=getPOSCustomer(),cat=posCategory?.value||cust?.category||'D',groups={};
+ cart.forEach(x=>{if(!groups[x.itemCode])groups[x.itemCode]={itemCode:x.itemCode,qty:0,tokens:[]};groups[x.itemCode].qty++;if(x.token)groups[x.itemCode].tokens.push(x.token)});
+ let lines=Object.values(groups).map(g=>{let i=db.items.find(x=>x.code===g.itemCode),rate=sellingRate(i,cat);return {...g,name:i?.name||g.itemCode,mrp:i?.mrp||0,rate,discount:db.discounts[cat],amount:rate*g.qty}});
+ let total=lines.reduce((a,x)=>a+x.amount,0),paid=Math.max(0,+paidAmount.value||0),bill=newBillNo(),at=new Date().toISOString(),method=paymentMethod.value;
+ if(paid>total){if(!confirm('Paid amount is more than bill total. Continue?'))return}
+ cart.filter(x=>x.token).forEach(x=>{let q=db.qrs.find(q=>q.token===x.token);if(q){q.sold=true;q.soldAt=at;q.saleBill=bill;q.status='SOLD'}});
+ let sale={bill,at,customerCode:cust?.code||'',customerName:cust?.name||(posCustomerName.value.trim()||'Walk-in'),mobile:cust?.mobile||normalizeMobile(posMobile.value),category:cat,paymentMethod:method,paidAmount:paid,balance:Math.max(0,total-paid),lines,total};
+ db.sales.push(sale);lastSale=sale;cart=[];paidAmount.value='';save();toast('Sale completed • '+bill);if(printAfter)setTimeout(()=>printSale(sale),120);
+}
+function renderQRRegister(){
+ let s=(qrSearch?.value||'').toLowerCase(),rows=db.qrs.filter(q=>{let i=db.items.find(x=>x.code===q.itemCode);return !s||[q.token,q.serial,q.itemCode,q.batch,i?.name].join(' ').toLowerCase().includes(s)}).slice().reverse();
+ qrRows.innerHTML=rows.map(q=>{let i=db.items.find(x=>x.code===q.itemCode),cls=q.sold?'amber':(q.status==='IN STOCK'?'green':'');return `<tr><td><b>${q.serial}</b><div class="tiny">${q.token.slice(0,18)}…</div></td><td>${i?.name||q.itemCode}<div class="tiny">${q.itemCode}</div></td><td>${q.batch}</td><td><span class="badge ${cls}">${q.status}</span></td><td>${q.saleBill||'—'}</td><td><span class="badge">${q.incentiveStatus}</span></td></tr>`}).join('')||'<tr><td colspan="6" class="muted">No QR records yet.</td></tr>';
+}
+function renderSales(){salesRows.innerHTML=db.sales.slice().reverse().map((s,ri)=>`<tr><td><b>${s.bill}</b></td><td>${new Date(s.at).toLocaleString()}</td><td>${s.customerName}<div class="tiny">${s.mobile||''} • Cat ${s.category}</div></td><td>${s.paymentMethod||'—'}<div class="tiny">Paid ${money(s.paidAmount||0)}</div></td><td>${s.lines.reduce((a,x)=>a+x.qty,0)}</td><td><b>${money(s.total)}</b></td><td><button class="btn secondary" style="padding:6px 8px" onclick="printSale(db.sales[db.sales.length-1-ri])">Print</button></td></tr>`).join('')||'<tr><td colspan="7" class="muted">No sales yet.</td></tr>'}
+function exportSales(){let rows=[];db.sales.forEach(s=>s.lines.forEach(l=>rows.push({Bill:s.bill,Date:s.at,Customer:s.customerName,Mobile:s.mobile||'',Category:s.category,'Payment Method':s.paymentMethod||'',Paid:s.paidAmount||0,Balance:s.balance??Math.max(0,(s.total||0)-(s.paidAmount||0)),'Item Code':l.itemCode,Item:l.name,MRP:l.mrp,Qty:l.qty,Rate:l.rate,Discount:l.discount,Amount:l.amount,'QR Count':l.tokens.length})));downloadXLS(rows,'ABS_POS_Sales.xlsx','Sales')}
+function downloadXLS(rows,name,sheet){if(!rows.length){toast('Nothing to download');return}let ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,sheet);XLSX.writeFile(wb,name)}
+async function toggleCamera(){
+ let w=document.getElementById('readerWrap');if(w.style.display==='none'){w.style.display='block';camera=new Html5Qrcode('reader');try{await camera.start({facingMode:'environment'},{fps:10,qrbox:220},text=>{scanToken.value=text;scanPOS()},()=>{})}catch(e){toast('Camera could not start')}}else{try{if(camera)await camera.stop()}catch(e){}w.style.display='none'}
+}
+setInterval(()=>clock.textContent=new Date().toLocaleString(),1000);
+qrDate.value=new Date().toISOString().slice(0,10);
+posCategory.value='D';paymentMethod.value='Cash';
+refresh();
+</script>
+</body>
+</html>
