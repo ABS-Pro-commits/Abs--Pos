@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ABS POS • Bike Guru • V2.5</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{--bg:#f4f7fb;--card:#fff;--ink:#172033;--muted:#68758b;--blue:#1558d6;--green:#16845b;--red:#c63a3a;--line:#dfe6f0;--soft:#edf4ff}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--ink)}
+header{position:sticky;top:0;z-index:20;background:#123f91;color:#fff;padding:12px 16px}
+.brand{display:flex;justify-content:space-between;gap:12px;align-items:center}.brand h1{font-size:19px;margin:0}.tiny{font-size:11px}.muted{color:var(--muted);font-size:12px}
+nav{display:flex;gap:7px;margin-top:9px;overflow:auto}nav button{border:0;border-radius:9px;padding:8px 11px;font-weight:700;background:#ffffff20;color:#fff;white-space:nowrap}nav button.active{background:#fff;color:#123f91}
+main{max-width:1450px;margin:auto;padding:12px}.page{display:none}.page.active{display:block}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px;box-shadow:0 5px 18px #1a33570d}
+h2,h3{margin:0 0 10px}label{display:block;font-size:12px;font-weight:700;margin:7px 0 4px;color:#4f5d72}
+input,select{width:100%;padding:9px 10px;border:1px solid #cbd6e5;border-radius:9px;background:#fff;font-size:14px}
+.row{display:flex;gap:7px;align-items:center}.row>*{flex:1}.btn{border:0;border-radius:9px;padding:9px 11px;background:var(--blue);color:#fff;font-weight:800;cursor:pointer}.btn.secondary{background:#eaf1ff;color:#174da8}.btn.green{background:var(--green)}.btn.red{background:var(--red)}.btn.gray{background:#657184}
+.mode{display:flex;gap:6px;margin-bottom:8px}.mode button{flex:1}.mode .on{outline:3px solid #bdd2ff}
+.pos3{display:grid;grid-template-columns:27% 27% 46%;gap:10px}.panel1{border-top:4px solid #1558d6}.panel2{border-top:4px solid #8c57c7}.panel3{border-top:4px solid #16845b}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:8px;border-bottom:1px solid #e6ebf2;text-align:left}th{background:#f3f6fa;position:sticky;top:0}.tablewrap{overflow:auto;max-height:360px;border:1px solid #e5eaf1;border-radius:10px}
+.total{font-size:26px;font-weight:900;text-align:right}.billactions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+.lookup{display:grid;grid-template-columns:1fr auto;gap:7px}.divider{height:1px;background:#e3e8ef;margin:11px 0}
+.badge{display:inline-block;border-radius:999px;padding:3px 7px;background:#eaf1ff;color:#174da8;font-size:10px;font-weight:800}
+.qrgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:9px}.qrlabel{text-align:center;background:#fff;border:1px dashed #777;padding:8px;page-break-inside:avoid}.qrlabel .serial{font-size:9px;word-break:break-all}
+.toast{display:none;position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#172033;color:#fff;padding:10px 15px;border-radius:9px;z-index:100}
+#receiptPrint{display:none}
+.loginOverlay{position:fixed;inset:0;background:#eef3fb;z-index:999;display:flex;align-items:center;justify-content:center;padding:16px}.loginCard{width:min(430px,100%);background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 12px 40px #18345a22}.clicklink{color:#1558d6;text-decoration:underline;cursor:pointer;font-weight:800}.modal{display:none;position:fixed;inset:0;background:#0007;z-index:300;align-items:center;justify-content:center;padding:14px}.modal.open{display:flex}.modalbox{background:#fff;border-radius:14px;padding:14px;width:min(900px,100%);max-height:88vh;overflow:auto}.suggestbox{border:1px solid #d8e0ec;border-radius:9px;max-height:180px;overflow:auto;margin-top:4px;display:none}.suggestbox div{padding:8px;border-bottom:1px solid #edf1f6;cursor:pointer}.suggestbox div:hover{background:#edf4ff}.userbar{display:flex;gap:8px;align-items:center}.hidden{display:none!important}
+@media(max-width:900px){.pos3{grid-template-columns:1fr}.billactions{grid-template-columns:1fr 1fr}}
+@media print{
+ body *{visibility:hidden!important}
+ #receiptPrint,#receiptPrint *{visibility:visible!important}
+ #receiptPrint{display:block!important;position:absolute;left:0;top:0;width:76mm;color:#000;font-family:monospace;font-size:11px}
+ #receiptPrint table{font-size:10px}#receiptPrint th,#receiptPrint td{padding:3px;border-bottom:1px dashed #aaa}
+ @page{size:80mm auto;margin:2mm}
+}
+</style>
+</head>
+<body>
+<header>
+ <div class="brand"><div><h1>ABS POS • Bike Guru • V2.5</h1><div class="tiny">Combined POS • pricing + cancellation + schemes + Bike Guru</div></div><div class="userbar"><div id="dbState" class="tiny">Connecting…</div><div id="whoAmI" class="tiny"></div><button id="logoutBtn" class="btn secondary hidden" onclick="logoutUser()">Logout</button></div></div>
+ <nav>
+  <button class="active" onclick="showPage('billing',this)">POS Billing</button>
+  <button data-admin="1" onclick="showPage('qr',this)">QR Generate</button>
+  <button data-admin="1" onclick="showPage('masters',this)">Masters</button>
+  <button onclick="showPage('history',this)">Bill History</button>
+  <button onclick="showPage('schemes',this);loadSchemeReport()">Schemes</button>
+  <button onclick="showPage('bikeguru',this);loadBikeGuru()">Bike Guru</button>
+  <button data-admin="1" onclick="showPage('users',this)">Users</button>
+ </nav>
+</header>
+
+<main>
+<section id="billing" class="page active">
+ <div class="pos3">
+  <div class="card panel1">
+   <h3>1 • Customer</h3>
+   <div class="mode"><button id="existingBtn" class="btn secondary on" onclick="customerMode('existing')">Existing</button><button id="newBtn" class="btn secondary" onclick="customerMode('new')">New / Walk-in</button></div>
+   <div id="existingBox">
+    <label>Search Existing Customer</label><input id="posCustomerSearch" placeholder="Name / mobile / customer code" oninput="populateCustomerSelect(this.value);autoPickCustomerByMobile(this.value)" onkeydown="if(event.key==='Enter')pickFirstCustomerMatch()">
+    <label>Select Customer</label><select id="posCustomer" onchange="renderBill()"></select>
+    <div id="custInfo" class="muted" style="margin-top:7px"></div><button id="custHistoryBtn" class="btn secondary hidden" style="width:100%;margin-top:7px" onclick="showCustomerHistory()">View Customer History</button>
+   </div>
+   <div id="newBox" style="display:none">
+    <label>Mobile</label><input id="newMobile" inputmode="numeric" placeholder="Mobile no.">
+    <label>Name</label><input id="newName" placeholder="Customer name / Walk-in">
+    <label>Address</label><input id="newAddress" placeholder="Address">
+    <div class="row"><div><label>Category</label><select id="newCategory"><option>A</option><option>B</option><option>C</option><option selected>D</option></select></div><div><label>Area</label><input id="newArea" placeholder="Area"></div></div>
+    <button class="btn green" style="width:100%;margin-top:9px" onclick="saveNewCustomer()">Save Customer & Use</button>
+    <div class="muted" style="margin-top:6px">Saving here creates the POS Customer Master record in Supabase.</div>
+   </div>
+   <div class="divider"></div>
+   <label>Payment Method</label><select id="paymentMethod"><option>Cash</option><option>UPI</option><option>Card</option><option>Credit</option><option>Mixed</option></select>
+   <label>Paid Amount</label><input id="paidAmount" type="number" min="0" step="0.01" placeholder="0.00" oninput="renderBill()">
+   <div class="card" style="margin-top:9px;padding:9px;background:#f7faff"><div class="tiny">Previous Outstanding</div><b id="previousOutstanding">₹0</b><div class="tiny" style="margin-top:5px">Total Outstanding After This Bill</div><b id="totalOutstanding">₹0</b></div>
+  </div>
+
+  <div class="card panel2">
+   <h3>2 • Scan / Item Entry</h3>
+   <label>Barcode / QR No.</label>
+   <div class="lookup"><input id="scanNo" placeholder="Scan or type barcode / QR no." onkeydown="if(event.key==='Enter')scanAdd()"><button class="btn" onclick="scanAdd()">Add</button></div>
+   <div class="muted" style="margin-top:5px">Accepts QR token or printed serial/barcode number.</div>
+   <div class="divider"></div>
+   <div class="muted"><b>OR</b> when barcode is not available</div>
+   <label>Item Code</label><input id="manualCode" list="itemCodeList" autocomplete="off" placeholder="Type item code / close match" oninput="showItemMatches(this.value)" onfocus="showItemMatches(this.value)">
+   <datalist id="itemCodeList"></datalist><div id="itemMatches" class="suggestbox"></div>
+   <label>Quantity</label><input id="manualQty" type="number" min="1" value="1">
+   <button class="btn secondary" style="width:100%;margin-top:9px" onclick="manualAdd()">Add Item + Qty</button>
+   <div class="divider"></div>
+   <div class="muted">Scanned pieces keep piece-level QR traceability. Manual lines are saved as MANUAL source.</div>
+  </div>
+
+  <div class="card panel3">
+   <div class="row"><div><h3>3 • Live Bill</h3><div class="muted" id="currentBillNo"></div></div><button class="btn gray" onclick="clearBill()">Clear</button></div>
+   <div class="tablewrap"><table><thead><tr><th>Item</th><th>MRP</th><th>Qty</th><th>Rate</th><th>Disc</th><th>Amount</th><th></th></tr></thead><tbody id="billRows"></tbody></table></div>
+   <div style="margin-top:9px"><div class="muted" style="text-align:right">Bill Amount</div><div class="total" id="billTotal">₹0</div><div class="muted" style="text-align:right;margin-top:4px">Current Bill Balance: <b id="currentBillBalance">₹0</b></div></div>
+   <div class="billactions"><button class="btn green" onclick="saveBill(false)">Save Bill</button><button class="btn" onclick="saveBill(true)">Save & Print</button></div>
+   <div class="divider"></div>
+   <label>Open Saved Bill</label><select id="billSearch"><option value="">Select saved bill no.</option></select>
+   <div class="row" style="margin-top:7px"><button class="btn secondary" style="width:100%" onclick="openBill(false)">Open Bill</button></div>
+   <label>Invoice Date</label><input id="savedBillDate" type="date" oninput="renderSavedBillDateList()">
+   <div id="savedBillDateList" class="muted" style="margin-top:6px"></div>
+   <button class="btn secondary" style="width:100%;margin-top:7px" onclick="reprintOpenedBill()">Print / Reprint Opened Bill</button><button id="cancelOpenedBillBtn" class="btn red hidden" style="width:100%;margin-top:7px" onclick="cancelOpenedBill()">Cancel Opened Bill</button>
+   <div id="openedBillInfo" class="muted" style="margin-top:6px"></div>
+   <div id="openedBillDetails" style="margin-top:7px"></div>
+  </div>
+ </div>
+</section>
+
+<section id="qr" class="page">
+ <div class="card">
+  <h2>Point 1 • Unique QR Generate & Print</h2>
+  <div class="row"><div><label>Item Code</label><select id="qrItemCode"><option value="">Select Item Code</option></select></div><div><label>Pieces</label><input id="qrQty" type="number" min="1" max="500" value="10"></div></div>
+  <div class="row"><div><label>Batch No.</label><input id="qrBatch" placeholder="Batch"></div><div><label>Packed / Received Date</label><input id="qrDate" type="date"></div></div>
+  <div class="row" style="margin-top:9px"><button class="btn" onclick="generateQRBatch()">Generate + Save</button><button class="btn secondary" onclick="printQRLabels()">Print Labels</button></div>
+  <div class="muted" style="margin-top:7px">Each physical piece gets one permanent 128-bit secure token. Mutable product/price data stays in Supabase.</div>
+ </div>
+ <div class="card"><h3>Label Preview</h3><div id="qrPreview" class="qrgrid"><div class="muted">Generate a batch to preview labels.</div></div></div>
+</section>
+
+<section id="masters" class="page">
+ <div class="row">
+  <div class="card">
+   <h3>Item Master • Add / Edit</h3>
+   <label>Select Existing Item</label><select id="masterItemSelect" onchange="loadItemForEdit()"><option value="">New Item</option></select>
+   <label>Code</label><input id="mItemCode" placeholder="Item code">
+   <label>Name</label><input id="mItemName" placeholder="Item name">
+   <div class="row"><div><label>MRP</label><input id="mItemMRP" type="number" min="0" step="0.01"></div><div><label>Base / Net Price</label><input id="mItemPrice" type="number" min="0" step="0.01"></div></div>
+   <div class="row"><div><label>Pricing Type</label><select id="mPricingType"><option value="DISCOUNT">Discount</option><option value="NET">Net Price</option></select></div><div><label>Scheme</label><select id="mSchemeExcluded"><option value="false">Part of Scheme</option><option value="true">Not Part of Scheme</option></select></div></div>
+   <button class="btn" style="width:100%;margin-top:8px" onclick="saveItem()">Save / Update Item</button>
+   <button class="btn secondary" style="width:100%;margin-top:6px" onclick="clearItemMaster()">New Item</button>
+  </div>
+  <div class="card">
+   <h3>Item Master • Bulk Upload</h3>
+   <label>Excel / CSV File</label><input id="itemUploadFile" type="file" accept=".xlsx,.xls,.csv">
+   <div class="muted" style="margin:7px 0">Required columns: Item Code, Item Name, MRP. Optional: Base Price.</div>
+   <button class="btn green" style="width:100%" onclick="uploadItems()">Upload Items to Supabase</button>
+   <div id="uploadStatus" class="muted" style="margin-top:7px"></div>
+  </div>
+ </div>
+ <div class="row">
+  <div class="card">
+   <h3>Customer Master • Add / Update</h3>
+   <label>Customer</label><select id="masterCustomerSelect" onchange="loadCustomerForEdit()"><option value="">New Customer</option></select>
+   <div class="row"><div><label>Customer Code</label><input id="mCustCode" placeholder="Auto: CUST0001"></div><div><label>Mobile</label><input id="mCustMobile" inputmode="numeric"></div></div>
+   <label>Name</label><input id="mCustName">
+   <label>Address</label><input id="mCustAddress">
+   <div class="row"><div><label>Area</label><input id="mCustArea"></div><div><label>Category</label><select id="mCustCategory"><option>A</option><option>B</option><option>C</option><option selected>D</option></select></div></div>
+   <div class="row"><div><label>GSTIN</label><input id="mCustGSTIN"></div><div><label>Remark</label><input id="mCustRemark"></div></div>
+   <button class="btn" style="width:100%;margin-top:8px" onclick="saveCustomerMaster()">Save / Update Customer</button>
+   <button class="btn secondary" style="width:100%;margin-top:6px" onclick="clearCustomerMaster()">New Customer</button>
+  </div>
+  <div class="card"><h3>Item × Customer Category Pricing</h3><div class="row"><div><label>Item Code</label><input id="priceItemCode" list="itemCodeList" placeholder="Item code"></div><div><label>Customer Category</label><select id="priceCategory"><option>A</option><option>B</option><option>C</option><option>D</option></select></div></div><div class="row"><div><label>Discount % (Discount items)</label><input id="priceDiscount" type="number" min="0" max="100" step="0.01"></div><div><label>Net / Selling Rate</label><input id="priceRate" type="number" min="0" step="0.01" placeholder="Optional; auto from MRP-discount"></div></div><button class="btn" style="width:100%;margin-top:8px" onclick="savePricingRow()">Save Pricing Row</button><div class="divider"></div><label>Pricing Master Excel / CSV</label><input id="pricingUploadFile" type="file" accept=".xlsx,.xls,.csv"><div class="muted" style="margin:7px 0">Columns: Item Code, Customer Category, Discount %, Selling Rate (Selling Rate may be blank).</div><button class="btn green" style="width:100%" onclick="uploadPricing()">Upload Pricing Master</button><div id="pricingUploadStatus" class="muted" style="margin-top:7px"></div></div>
+ </div>
+ <div class="card"><h3>Pricing Master</h3><div class="tablewrap"><table><thead><tr><th>Item</th><th>Category</th><th>MRP</th><th>Discount</th><th>Selling Rate</th></tr></thead><tbody id="pricingRows"></tbody></table></div></div>
+ <div class="card"><h3>Items</h3><div class="tablewrap"><table><thead><tr><th>Code</th><th>Name</th><th>MRP</th><th>Base/Net</th><th>Pricing</th><th>Scheme</th></tr></thead><tbody id="itemRows"></tbody></table></div></div>
+ <div class="card"><h3>Customers</h3><div class="tablewrap"><table><thead><tr><th>Code</th><th>Name</th><th>Mobile</th><th>Address</th><th>Category</th><th>Area</th></tr></thead><tbody id="customerRows"></tbody></table></div></div>
+</section>
+
+<section id="history" class="page">
+ <div class="card"><div class="row"><h2>Saved Bills</h2><input id="historySearch" placeholder="Search bill/customer/mobile" oninput="renderHistory()"></div><div class="row"><div><label>Date</label><input id="historyDate" type="date" oninput="renderHistory()"></div><div><label>&nbsp;</label><button class="btn secondary" style="width:100%" onclick="document.getElementById('historyDate').value='';renderHistory()">All Dates</button></div></div><div class="tablewrap"><table><thead><tr><th>Bill</th><th>Date</th><th>Customer</th><th>Mode</th><th>Bill Amount</th><th>Paid</th><th>Balance</th><th>Status</th><th></th></tr></thead><tbody id="historyRows"></tbody></table></div></div>
+</section>
+
+
+<section id="schemes" class="page">
+ <div class="row">
+  <div class="card"><h2>Customer Purchase Scheme</h2><label>Scheme Name</label><input id="schemeName" placeholder="Monthly Gift Scheme"><div class="row"><div><label>From</label><input id="schemeFrom" type="date"></div><div><label>To</label><input id="schemeTo" type="date"></div></div><label>Slabs</label><div id="schemeSlabs"></div><button class="btn secondary" style="width:100%;margin-top:6px" onclick="addSchemeSlab()">+ Add Slab</button><button class="btn" style="width:100%;margin-top:8px" onclick="saveScheme()">Save Scheme</button><div id="schemeSaveMsg" class="muted" style="margin-top:6px"></div></div>
+  <div class="card"><h2>Scheme Report</h2><label>Select Scheme</label><select id="schemeSelect" onchange="loadSchemeReport()"></select><div class="row"><div><label>Search Customer by Mobile</label><input id="schemeCustomerSearch" inputmode="numeric" placeholder="Mobile no." oninput="renderSchemeReport()"></div><div><label>&nbsp;</label><button class="btn green" style="width:100%" onclick="downloadSchemeReportXLS()">Download XLS</button></div></div><div class="muted" style="margin:7px 0">Items marked “Not Part of Scheme” are excluded.</div><div class="tablewrap"><table><thead><tr><th>Customer</th><th>Mobile</th><th>Total</th><th>Excluded</th><th>Eligible</th><th>Achieved Slab</th><th>Next Target</th><th>Status</th></tr></thead><tbody id="schemeReportRows"></tbody></table></div></div>
+ </div>
+</section>
+
+<section id="bikeguru" class="page">
+ <div class="row">
+  <div class="card"><h2>Bike Guru • Registration</h2><label>Mobile</label><input id="bgMobile" inputmode="numeric" onblur="loadBikeGuruByMobile()"><label>Type</label><select id="bgType"><option value="MECHANIC">Mechanic</option><option value="RETAILER">Retailer</option></select><label>Name</label><input id="bgName"><label>Garage / Shop Name</label><input id="bgGarage"><div class="row"><div><label>PAN</label><input id="bgPan"></div><div><label>UPI ID</label><input id="bgUpi"></div></div><label>Address / Area</label><input id="bgAddress"><button class="btn green" style="width:100%;margin-top:8px" onclick="saveBikeGuruMember()">Register / Update Bike Guru</button><div class="muted" style="margin-top:6px">For an existing mobile, Name and Type are locked. PAN and UPI cannot be duplicated.</div></div>
+  <div class="card"><h2>Bike Guru Dashboard</h2><label>Search Mobile / Name / Garage</label><input id="bgSearch" oninput="renderBikeGuruMembers()"><div class="tablewrap"><table><thead><tr><th>Mobile</th><th>Type</th><th>Name</th><th>Garage</th><th>Points</th><th>Redeemed</th><th>Available</th><th>Action</th></tr></thead><tbody id="bgRows"></tbody></table></div><div id="bgAdminNotice" class="card" style="margin-top:10px;background:#fff9e8"><b>Admin Redemption Notifications</b><div id="bgNotifications" class="muted" style="margin-top:6px"></div></div></div>
+ </div>
+</section>
+
+<section id="users" class="page">
+ <div class="row">
+  <div class="card"><h2>User Creation / Edit</h2><input id="uId" type="hidden"><label>Username</label><input id="uUsername" autocomplete="off"><label>Name</label><input id="uName"><div class="row"><div><label>Role</label><select id="uRole"><option>ADMIN</option><option>POS</option></select></div><div><label>Active</label><select id="uActive"><option value="true">Yes</option><option value="false">No</option></select></div></div><label>Password <span class="muted">(blank keeps existing password while editing)</span></label><input id="uPassword" type="password" autocomplete="new-password"><button class="btn" style="width:100%;margin-top:8px" onclick="saveUser()">Save User</button><button class="btn secondary" style="width:100%;margin-top:6px" onclick="clearUserForm()">New User</button></div>
+  <div class="card"><h2>Users</h2><div class="tablewrap"><table><thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Active</th><th>Action</th></tr></thead><tbody id="userRows"></tbody></table></div></div>
+ </div>
+</section>
+</main>
+
+<div id="loginOverlay" class="loginOverlay"><div class="loginCard"><h2>ABS POS Login</h2><label>Username</label><input id="loginUsername" autocomplete="username"><label>Password</label><input id="loginPassword" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginUser()"><button class="btn" style="width:100%;margin-top:10px" onclick="loginUser()">Login</button><div class="divider"></div><div class="muted">First installation only: if no POS user exists, create the first Admin below.</div><label>Admin Name</label><input id="bootName" placeholder="Owner / Admin name"><button class="btn secondary" style="width:100%;margin-top:7px" onclick="bootstrapAdmin()">Create First Admin Using Above Username/Password</button><div id="loginMsg" class="muted" style="margin-top:8px"></div></div></div>
+<div id="historyModal" class="modal"><div class="modalbox"><div class="row"><h2 id="historyModalTitle">Customer History</h2><button class="btn gray" onclick="closeHistoryModal()">Close</button></div><div class="card" style="margin-bottom:10px"><div class="row"><div><div class="muted">Current Outstanding</div><div class="total" id="ledgerBalance" style="text-align:left">₹0</div></div><div><label>Receive Payment</label><input id="ledgerPayAmount" type="number" min="0.01" step="0.01" placeholder="Amount"></div><div><label>Mode</label><select id="ledgerPayMethod"><option>Cash</option><option>UPI</option><option>Card</option><option>Bank</option></select></div></div><div class="row"><input id="ledgerPayRef" placeholder="Reference / UTR (optional)"><button class="btn green" onclick="recordCustomerPayment()">Save Payment</button></div></div><h3>Bills</h3><div class="tablewrap"><table><thead><tr><th>Bill</th><th>Date</th><th>Bill Amount</th><th>Paid</th><th>Balance</th><th>Status</th><th></th></tr></thead><tbody id="customerHistoryRows"></tbody></table></div><h3 style="margin-top:12px">Ledger</h3><div class="tablewrap"><table><thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Debit</th><th>Credit</th><th>Running Balance</th></tr></thead><tbody id="customerLedgerRows"></tbody></table></div></div></div>
+<div id="pdfModal" class="modal"><div class="modalbox" style="max-width:900px"><div class="row"><h2>Bill PDF Preview</h2><button class="btn gray" onclick="closePdfModal()">Close</button></div><iframe id="pdfFrame" style="width:100%;height:70vh;border:1px solid #ddd;border-radius:8px"></iframe><a id="pdfDownload" class="btn green" style="display:inline-block;margin-top:8px;text-decoration:none" download>Download PDF</a></div></div>
+<div id="receiptPrint"></div><div id="toast" class="toast"></div>
+
+<script>
+const SUPABASE_URL='https://zdwsjzaslxjqrltijdfh.supabase.co';
+const SUPABASE_KEY='sb_publishable_JEoDRoS-eSr3pRgy8XopJw_yu5S8iRM';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const LOCAL='abs_pos_v23_cache';
+const SESSION_KEY='abs_pos_session';
+let db={items:[],customers:[],pricing:[],balances:{},qrs:[],bills:[],schemes:[],bikeGuru:[]};
+let schemeReportData=[];
+let cart=[],lastGenerated=[],openedBill=null,remoteOK=false,currentUser=null,sessionToken=localStorage.getItem(SESSION_KEY)||'',lineOverrides={};
+
+const $=id=>document.getElementById(id);
+const money=n=>'₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2});
+function toast(t){let e=$('toast');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',2200)}
+function cache(){localStorage.setItem(LOCAL,JSON.stringify(db))}
+function secureHex(bytes=24){const a=new Uint8Array(bytes);crypto.getRandomValues(a);return Array.from(a).map(b=>b.toString(16).padStart(2,'0')).join('').toUpperCase()}
+function uniqueToken(){return 'ABS-'+secureHex(24)}
+function uniqueSerial(){return 'ABS-'+secureHex(10)}
+function localDate(){return new Date().toISOString().slice(0,10)}
+function showPage(id,btn){if(!currentUser)return;if(id==='users'&&currentUser.role!=='ADMIN'){toast('Admin only');return}document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));$(id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');renderAll()}
+function customerMode(m){$('existingBox').style.display=m==='existing'?'block':'none';$('newBox').style.display=m==='new'?'block':'none';$('existingBtn').classList.toggle('on',m==='existing');$('newBtn').classList.toggle('on',m==='new')}
+function currentCustomer(){return db.customers.find(c=>c.code===$('posCustomer').value)||null}
+function currentCategory(){return currentCustomer()?.category||'D'}
+function pricingFor(itemCode,cat){return db.pricing.find(p=>p.itemCode===itemCode&&p.category===cat)||null}
+function systemRate(item,cat){let p=pricingFor(item.code,cat);if(p&&+p.rate>0)return +p.rate;if(item.pricingType==='NET'&&+item.basePrice>0)return +item.basePrice;if(+item.basePrice>0)return +item.basePrice;return null}
+function rate(item,cat,key=''){let o=lineOverrides[key];return o?+o.rate:systemRate(item,cat)}
+function discountFor(item,cat,key=''){let o=lineOverrides[key];if(o)return item.mrp>0?+((1-o.rate/item.mrp)*100).toFixed(2):0;let p=pricingFor(item.code,cat);if(item.pricingType==='NET')return 0;return p?+p.discount:(item.mrp>0&&item.basePrice>0?+((1-item.basePrice/item.mrp)*100).toFixed(2):0)}
+function customerBalance(code){return +(db.balances[code]||0)}
+function nextLocalBillNo(){let d=localDate().replaceAll('-',''),n=db.bills.filter(b=>(b.bill_no||b.bill||'').includes(d)).length+1;return `POS-${d}-${String(n).padStart(4,'0')}`}
+
+async function fetchAllBillsRemote(){let all=[];for(let from=0;;from+=1000){let r=await sb.from('pos_bills').select('*,pos_bill_lines(*)').order('created_at',{ascending:false}).range(from,from+999);if(r.error)return r;all.push(...(r.data||[]));if((r.data||[]).length<1000)break}return {data:all,error:null}}
+
+async function loadRemote(){
+ try{
+  let [it,cu,qr,bi,px,sc,bg]=await Promise.all([
+   sb.from('pos_items').select('*').order('item_code'),
+   sb.from('pos_customers').select('*').order('customer_code'),
+   sb.from('pos_qr_registry').select('*').order('created_at',{ascending:false}).limit(5000),
+   fetchAllBillsRemote(),
+   sb.from('pos_item_category_pricing').select('*').order('item_code'),
+   sb.from('pos_schemes').select('*').order('from_date',{ascending:false}),
+   sb.from('bike_guru_members').select('*').order('created_at',{ascending:false})
+  ]);
+  for(let r of [it,cu,qr,bi,px,sc,bg])if(r.error)throw r.error;
+  db.items=it.data.map(x=>({code:x.item_code,name:x.item_name,mrp:+x.mrp,basePrice:+x.base_price,pricingType:x.pricing_type||'DISCOUNT',schemeExcluded:!!x.scheme_excluded}));
+  db.customers=cu.data.map(x=>({code:x.customer_code,name:x.customer_name,mobile:x.mobile||'',address:x.address||'',area:x.area||'',category:x.category||'D',gstin:x.gstin||'',remark:x.remark||''}));
+  db.qrs=qr.data.map(x=>({token:x.token,serial:x.serial_no,itemCode:x.item_code,batch:x.batch_no,packedDate:x.packed_date,status:x.status,sold:x.status==='SOLD',saleBill:x.sale_bill_no}));
+  db.bills=bi.data.map(x=>({bill:x.bill_no,at:x.bill_date,customerCode:x.customer_code||'',customerName:x.customer_name,customerMobile:x.customer_mobile||'',category:x.customer_category||'D',paymentMethod:x.payment_method,paidAmount:+x.paid_amount,total:+x.total_amount,status:x.status||'ACTIVE',cancelReason:x.cancel_reason||'',lines:(x.pos_bill_lines||[]).map(l=>({itemCode:l.item_code,name:l.item_name,mrp:+l.mrp,qty:+l.qty,rate:+l.rate,discount:+l.discount_pct,amount:+l.amount,source:l.entry_source,tokens:l.qr_tokens||[]}))}));
+  db.pricing=px.data.map(x=>({itemCode:x.item_code,category:x.customer_category,discount:+x.discount_pct,rate:+x.selling_rate}));db.schemes=sc.data||[];db.bikeGuru=bg.data||[];
+  await loadBalances();
+  remoteOK=true;$('dbState').textContent='Supabase connected';cache();renderAll();if(currentUser?.role==='ADMIN')loadUsers();
+ }catch(e){
+  remoteOK=false;$('dbState').textContent='Offline cache mode';let c=JSON.parse(localStorage.getItem(LOCAL)||'null');if(c)db=c;renderAll();toast('Supabase not ready — run POS SQL first');
+ }
+}
+
+function populateCustomerSelect(filter='') {
+ let el=$('posCustomer'); if(!el)return; let old=el.value; let q=String(filter||'').trim().toLowerCase();
+ let list=db.customers.filter(c=>!q||[c.code,c.name,c.mobile,c.area].join(' ').toLowerCase().includes(q));
+ el.innerHTML='<option value="">Walk-in / Select Existing</option>'+list.map(c=>`<option value="${c.code}">${c.code} — ${c.name}${c.mobile?' • '+c.mobile:''}</option>`).join('');
+ if([...el.options].some(o=>o.value===old))el.value=old;
+}
+function renderAll(){
+ populateCustomerSelect($('posCustomerSearch')?.value||'');
+ let itemOpts='<option value="">Select Item Code</option>'+db.items.map(i=>`<option value="${i.code}">${i.code} — ${i.name}</option>`).join('');
+ if($('qrItemCode'))$('qrItemCode').innerHTML=itemOpts;
+ if($('itemCodeList'))$('itemCodeList').innerHTML=db.items.map(i=>`<option value="${i.code}">${i.name}</option>`).join('');
+ if($('masterItemSelect')){let old=$('masterItemSelect').value;$('masterItemSelect').innerHTML='<option value="">New Item</option>'+db.items.map(i=>`<option value="${i.code}">${i.code} — ${i.name}</option>`).join('');if([...$('masterItemSelect').options].some(o=>o.value===old))$('masterItemSelect').value=old;}
+ if($('masterCustomerSelect')){let old=$('masterCustomerSelect').value;$('masterCustomerSelect').innerHTML='<option value="">New Customer</option>'+db.customers.map(c=>`<option value="${c.code}">${c.code} — ${c.name}</option>`).join('');if([...$('masterCustomerSelect').options].some(o=>o.value===old))$('masterCustomerSelect').value=old;}
+ $('itemRows').innerHTML=db.items.map(i=>`<tr><td><span class="clicklink" onclick="editItemByCode('${i.code}')">${i.code}</span></td><td>${i.name}</td><td>${money(i.mrp)}</td><td>${money(i.basePrice)}</td><td>${i.pricingType}</td><td>${i.schemeExcluded?'Excluded':'Eligible'}</td></tr>`).join('')||'<tr><td colspan="6">No items</td></tr>';
+ $('customerRows').innerHTML=db.customers.map(c=>`<tr><td>${c.code}</td><td>${c.name}</td><td>${c.mobile}</td><td>${c.address||''}</td><td>${c.category}</td><td>${c.area}</td></tr>`).join('')||'<tr><td colspan="6">No customers</td></tr>';
+ if($('pricingRows'))$('pricingRows').innerHTML=db.pricing.map(p=>{let i=db.items.find(x=>x.code===p.itemCode);return `<tr><td>${p.itemCode}${i?' — '+i.name:''}</td><td>${p.category}</td><td>${money(i?.mrp||0)}</td><td>${p.discount}%</td><td>${money(p.rate)}</td></tr>`}).join('')||'<tr><td colspan="5">No pricing master rows</td></tr>';
+ $('currentBillNo').textContent='Next bill number will be assigned on Save';
+ if($('billSearch')){let old=$('billSearch').value;$('billSearch').innerHTML='<option value="">Select saved bill no.</option>'+db.bills.map(b=>`<option value="${b.bill}">${b.bill} — ${new Date(b.at).toLocaleDateString()}</option>`).join('');if([...$('billSearch').options].some(o=>o.value===old))$('billSearch').value=old;}
+ renderBill();renderHistory();renderSavedBillDateList();renderSchemeOptions();renderBikeGuruMembers();
+}
+function renderBill(){
+ let c=currentCustomer(),prev=c?customerBalance(c.code):0;$('custInfo').innerHTML=c?`${c.mobile||'No mobile'} • Category ${c.category} • ${c.area||''}${c.address?' • '+c.address:''}<br><b>Outstanding: ${money(prev)}</b>`:'Walk-in • Category D';if($('custHistoryBtn'))$('custHistoryBtn').classList.toggle('hidden',!c);
+ let cat=currentCategory(),groups={};
+ cart.forEach(x=>{let k=x.itemCode+'|'+x.source;if(!groups[k])groups[k]={key:k,itemCode:x.itemCode,qty:0,tokens:[],source:x.source};groups[k].qty+=x.qty||1;if(x.token)groups[k].tokens.push(x.token)});
+ let total=0,missing=[];
+ $('billRows').innerHTML=Object.values(groups).map(g=>{let i=db.items.find(x=>x.code===g.itemCode);if(!i)return'';let r=rate(i,cat,g.key),d=discountFor(i,cat,g.key),ov=lineOverrides[g.key];if(r===null){missing.push(i.code);return `<tr><td><b>${i.name}</b><div class="tiny">${i.code} • ${g.source}</div></td><td>${money(i.mrp)}</td><td>${g.qty}</td><td><b>NO PRICE</b></td><td>-</td><td>-</td><td><button class="btn secondary" onclick="overrideLinePrice('${g.key}')">Set Price</button> <button class="btn red" onclick="removeLine('${g.itemCode}','${g.source}')">−</button></td></tr>`}let a=r*g.qty;total+=a;return `<tr><td><b>${i.name}</b><div class="tiny">${i.code} • ${g.source}${g.tokens.length?' • '+g.tokens.length+' traced':''}${ov?' • OVERRIDE: '+ov.reason:''}</div></td><td>${money(i.mrp)}</td><td>${g.qty}</td><td>${money(r)}${ov?'<div class="tiny">System '+money(ov.systemRate)+'</div>':''}</td><td>${d}%</td><td><b>${money(a)}</b></td><td><button class="btn secondary" onclick="overrideLinePrice('${g.key}')">Override Price</button> <button class="btn red" onclick="removeLine('${g.itemCode}','${g.source}')">−</button></td></tr>`}).join('')||'<tr><td colspan="7" class="muted">Scan barcode/QR or enter Item Code + Qty.</td></tr>';
+ let paid=Math.max(0,+$('paidAmount').value||0),current=Math.max(0,total-paid),after=Math.max(0,prev+total-paid);
+ $('billTotal').textContent=money(total);$('previousOutstanding').textContent=money(prev);$('currentBillBalance').textContent=money(current);$('totalOutstanding').textContent=money(after);$('billTotal').dataset.missing=missing.join(',');
+}
+function removeLine(code,source){let ix=-1;for(let n=cart.length-1;n>=0;n--){if(cart[n].itemCode===code&&cart[n].source===source){ix=n;break}}if(ix>=0)cart.splice(ix,1);renderBill()}
+function clearBill(){cart=[];lineOverrides={};$('paidAmount').value='';renderBill()}
+function overrideLinePrice(key){let [code]=key.split('|'),i=db.items.find(x=>x.code===code);if(!i)return;let sys=systemRate(i,currentCategory())||0;let v=prompt(`Final selling rate for ${code}`,lineOverrides[key]?.rate||sys);if(v===null)return;let rr=Number(v);if(!(rr>=0)){toast('Invalid rate');return}let reason=prompt('Reason: Customer Negotiation / Defective-Damaged / Clearance-Old Stock / Other',lineOverrides[key]?.reason||'Customer Negotiation');if(!reason)return;lineOverrides[key]={rate:rr,systemRate:sys,reason,by:currentUser?.username||'',at:new Date().toISOString()};renderBill()}
+
+async function saveNewCustomer(){
+ if(!remoteOK){toast('Supabase connection required');return}
+ let name=$('newName').value.trim(),mobile=$('newMobile').value.trim(),category=$('newCategory').value,area=$('newArea').value.trim(),address=$('newAddress').value.trim();
+ if(!name){toast('Customer name required');return}
+ if(mobile){let md=mobile.replace(/\D/g,'').slice(-10),existing=db.customers.find(c=>String(c.mobile||'').replace(/\D/g,'').slice(-10)===md);if(existing){toast('Customer already registered');return}}
+ let cr=await sb.rpc('pos_next_customer_code');if(cr.error){toast('Customer code failed: '+cr.error.message);return}let code=String(cr.data||'').trim();
+ let r=await sb.from('pos_customers').insert({customer_code:code,customer_name:name,mobile:mobile||null,address,category,area}).select('*').single();
+ if(r.error){toast('Customer save failed: '+r.error.message);return}
+ await refreshCustomers();$('posCustomer').value=code;customerMode('existing');renderBill();toast('Customer saved in Supabase');
+}
+async function refreshCustomers(){let r=await sb.from('pos_customers').select('*').order('customer_code');if(r.error){toast('Customer fetch failed: '+r.error.message);return false}db.customers=r.data.map(x=>({code:x.customer_code,name:x.customer_name,mobile:x.mobile||'',address:x.address||'',area:x.area||'',category:x.category||'D',gstin:x.gstin||'',remark:x.remark||''}));cache();renderAll();return true}
+async function refreshItems(){let r=await sb.from('pos_items').select('*').order('item_code');if(r.error){toast('Item fetch failed: '+r.error.message);return false}db.items=r.data.map(x=>({code:x.item_code,name:x.item_name,mrp:+x.mrp,basePrice:+x.base_price,pricingType:x.pricing_type||'DISCOUNT',schemeExcluded:!!x.scheme_excluded}));cache();renderAll();return true}
+
+function scanAdd(){
+ let v=$('scanNo').value.trim().toUpperCase();if(!v)return;
+ let q=db.qrs.find(x=>x.token===v||String(x.serial||'').toUpperCase()===v);
+ if(!q){toast('Barcode / QR not found');$('scanNo').select();return}
+ if(q.sold||q.status==='SOLD'){toast('Already sold on '+(q.saleBill||'earlier bill'));return}
+ if(cart.some(x=>x.token===q.token)){toast('This piece is already in current bill');return}
+ if(!db.items.some(i=>i.code===q.itemCode)){toast('Mapped item not found in Item Master');return}
+ cart.push({itemCode:q.itemCode,qty:1,token:q.token,source:'SCAN'});$('scanNo').value='';renderBill();
+}
+function manualAdd(){
+ let code=$('manualCode').value.trim().toUpperCase(),qty=Math.max(1,parseInt($('manualQty').value)||1);
+ if(!db.items.some(i=>i.code===code)){toast('Item code not found');return}
+ cart.push({itemCode:code,qty,token:null,source:'MANUAL'});$('manualCode').value='';$('manualQty').value=1;renderBill();
+}
+
+async function saveBill(doPrint){
+ if(!cart.length){toast('Bill is empty');return}
+ if(!remoteOK){toast('Supabase connection required — bill not saved');return}
+ let cust=currentCustomer(),cat=currentCategory(),groups={};
+ cart.forEach(x=>{let k=x.itemCode+'|'+x.source;if(!groups[k])groups[k]={key:k,itemCode:x.itemCode,qty:0,tokens:[],source:x.source};groups[k].qty+=x.qty||1;if(x.token)groups[k].tokens.push(x.token)});
+ let missing=Object.values(groups).map(g=>db.items.find(x=>x.code===g.itemCode)).filter(i=>i&&rate(i,cat,i.code+'|'+(Object.values(groups).find(g=>g.itemCode===i.code)?.source||'MANUAL'))===null);if(missing.length){toast('Pricing missing for '+missing.map(i=>i.code+' / '+cat).join(', '));return}
+ let lines=Object.values(groups).map(g=>{let i=db.items.find(x=>x.code===g.itemCode),r=rate(i,cat,g.key),o=lineOverrides[g.key];return {...g,name:i.name,mrp:+i.mrp,rate:r,discount:discountFor(i,cat,g.key),amount:+(r*g.qty).toFixed(2),systemRate:o?o.systemRate:systemRate(i,cat),overrideReason:o?.reason||null,overrideBy:o?.by||null,overrideAt:o?.at||null}});
+ let total=+lines.reduce((a,x)=>a+x.amount,0).toFixed(2),paid=Math.max(0,+$('paidAmount').value||0),pay=$('paymentMethod').value,at=new Date().toISOString();if(!cust&&paid<total){toast('Walk-in bill cannot leave outstanding balance');return}if(cust&&paid>customerBalance(cust.code)+total){toast('Paid amount cannot exceed total customer due');return}
+ let br=await sb.rpc('pos_save_bill',{p_bill_no:null,p_bill_date:at,p_customer_code:cust?.code||null,p_customer_name:cust?.name||'Walk-in',p_customer_mobile:cust?.mobile||'',p_customer_category:cat,p_payment_method:pay,p_paid_amount:paid,p_total_amount:total,p_lines:lines});
+ if(br.error){toast('Save failed: '+br.error.message);return}
+ let bill=String(br.data||'').trim();if(!bill){toast('Save failed: bill number not returned');return}
+ let saved={bill,at,customerCode:cust?.code||'',customerName:cust?.name||'Walk-in',customerMobile:cust?.mobile||'',category:cat,paymentMethod:pay,paidAmount:paid,total,lines};
+ db.bills.unshift(saved);lines.flatMap(x=>x.tokens).forEach(t=>{let q=db.qrs.find(x=>x.token===t);if(q){q.sold=true;q.status='SOLD';q.saleBill=bill}});
+ await loadBalances();cache();openedBill=saved;buildReceipt(saved);cart=[];lineOverrides={};$('paidAmount').value='';renderAll();toast('Bill saved in Supabase • '+bill);if(doPrint)setTimeout(()=>window.print(),150);
+}
+
+async function fetchBill(no){
+ let b=db.bills.find(x=>(x.bill||'').toUpperCase()===String(no||'').toUpperCase());
+ if(!b&&remoteOK){let r=await sb.from('pos_bills').select('*,pos_bill_lines(*)').eq('bill_no',no).maybeSingle();if(r.error){toast('Bill fetch failed: '+r.error.message);return null}if(r.data)b={bill:r.data.bill_no,at:r.data.bill_date,customerCode:r.data.customer_code||'',customerName:r.data.customer_name,customerMobile:r.data.customer_mobile||'',category:r.data.customer_category,paymentMethod:r.data.payment_method,paidAmount:+r.data.paid_amount,total:+r.data.total_amount,lines:(r.data.pos_bill_lines||[]).map(l=>({itemCode:l.item_code,name:l.item_name,mrp:+l.mrp,qty:+l.qty,rate:+l.rate,discount:+l.discount_pct,amount:+l.amount,source:l.entry_source,tokens:l.qr_tokens||[]}))}}
+ return b||null;
+}
+async function openBill(doPrint=false,noArg=''){
+ let no=String(noArg||$('billSearch').value||'').trim().toUpperCase();if(!no){toast('Select a saved bill');return}
+ let b=await fetchBill(no);if(!b){toast('Bill not found');return}openedBill=b;buildReceipt(b);$('billSearch').value=b.bill;$('openedBillInfo').textContent=`${b.bill} • ${b.customerName} • ${money(b.total)}`;$('openedBillDetails').innerHTML=`<div class="tablewrap"><table><thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${b.lines.map(l=>`<tr><td>${l.itemCode} — ${l.name}</td><td>${l.qty}</td><td>${money(l.rate)}</td><td>${money(l.amount)}</td></tr>`).join('')}</tbody></table></div>`;$('cancelOpenedBillBtn').classList.toggle('hidden',b.status==='CANCELLED');toast('Bill opened');
+}
+function reprintOpenedBill(){if(!openedBill){toast('Open a saved bill first');return}buildReceipt(openedBill);window.print()}
+async function cancelOpenedBill(){if(!openedBill){toast('Open a bill first');return}if(openedBill.status==='CANCELLED'){toast('Bill already cancelled');return}let reason=prompt('Cancellation reason');if(!reason)return;if(!confirm(`Cancel ${openedBill.bill}? Stock/QR and ledger will be reversed.`))return;let r=await sb.rpc('pos_cancel_bill',{p_token:sessionToken,p_bill_no:openedBill.bill,p_reason:reason});if(r.error){toast('Cancel failed: '+r.error.message);return}toast('Bill cancelled and reversed');openedBill=null;$('openedBillInfo').textContent='';$('openedBillDetails').innerHTML='';$('cancelOpenedBillBtn').classList.add('hidden');await loadRemote()}
+function buildReceipt(b){
+ $('receiptPrint').innerHTML=`<div style="text-align:center"><b style="font-size:16px">ABS CORP</b><br>POS SALES RECEIPT</div><hr>
+ <div>Bill: <b>${b.bill}</b><br>Date: ${new Date(b.at).toLocaleString()}<br>Customer: ${b.customerName}${b.customerMobile?'<br>Mobile: '+b.customerMobile:''}</div><hr>
+ <table><thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amt</th></tr></thead><tbody>${b.lines.map(l=>`<tr><td>${l.itemCode}<br>${l.name}</td><td>${l.qty}</td><td>${l.rate.toFixed(2)}</td><td>${l.amount.toFixed(2)}</td></tr>`).join('')}</tbody></table>
+ <hr><div style="text-align:right"><b>Bill Amount: ${money(b.total)}</b><br>Paid: ${money(b.paidAmount)}<br>Mode: ${b.paymentMethod}<br>Bill Balance: ${money(Math.max(0,b.total-b.paidAmount))}${b.customerCode?'<br><b>Total Outstanding: '+money(customerBalance(b.customerCode))+'</b>':''}</div><hr><div style="text-align:center">Thank you</div>`;
+}
+
+async function generateQRBatch(){
+ let code=$('qrItemCode').value.trim().toUpperCase(),qty=Math.min(500,Math.max(1,+$('qrQty').value||1)),batch=$('qrBatch').value.trim()||('B'+Date.now()),date=$('qrDate').value||localDate();
+ if(!db.items.some(i=>i.code===code)){toast('Item code not found');return}
+ let rows=[];for(let n=0;n<qty;n++)rows.push({token:uniqueToken(),serial_no:uniqueSerial(),item_code:code,batch_no:batch,packed_date:date,status:'PRINTED'});
+ if(remoteOK){let r=await sb.from('pos_qr_registry').insert(rows);if(r.error){toast('QR save failed: '+r.error.message);return}}
+ lastGenerated=rows.map(x=>({token:x.token,serial:x.serial_no,itemCode:x.item_code,batch:x.batch_no,packedDate:x.packed_date,status:x.status,sold:false,saleBill:null}));db.qrs.push(...lastGenerated);cache();renderQRPreview();toast(qty+' unique QRs generated & saved');
+}
+function renderQRPreview(){
+ let box=$('qrPreview');box.innerHTML='';if(!lastGenerated.length){box.innerHTML='<div class="muted">Generate a batch to preview labels.</div>';return}
+ lastGenerated.forEach((q,n)=>{let i=db.items.find(x=>x.code===q.itemCode),d=document.createElement('div');d.className='qrlabel';d.innerHTML=`<b>${i?.name||q.itemCode}</b><div>${q.itemCode}</div><div id="q${n}" style="display:flex;justify-content:center;margin:6px"></div><div class="serial">${q.serial}</div>`;box.appendChild(d);new QRCode($('q'+n),{text:q.token,width:105,height:105,correctLevel:QRCode.CorrectLevel.M})})
+}
+function printQRLabels(){
+ if(!lastGenerated.length){toast('Generate QR first');return}
+ let old=$('receiptPrint').innerHTML;$('receiptPrint').innerHTML='<div class="qrgrid">'+$('qrPreview').innerHTML+'</div>';window.print();$('receiptPrint').innerHTML=old;
+}
+
+async function saveItem(){
+ if(!remoteOK){toast('Supabase connection required');return}
+ let code=$('mItemCode').value.trim().toUpperCase(),name=$('mItemName').value.trim(),mrp=+$('mItemMRP').value,base=+$('mItemPrice').value,pricing_type=$('mPricingType').value,scheme_excluded=$('mSchemeExcluded').value==='true';if(!code||!name||mrp<=0){toast('Code, name and MRP required');return}
+ let editing=!!$('masterItemSelect').value;
+ if(!editing && db.items.some(i=>i.code===code)){toast('Duplicate item code not allowed');return}
+ let q=editing?sb.from('pos_items').update({item_name:name,mrp,base_price:base,pricing_type,scheme_excluded}).eq('item_code',code):sb.from('pos_items').insert({item_code:code,item_name:name,mrp,base_price:base,pricing_type,scheme_excluded});
+ let r=await q.select();if(r.error){toast('Item save failed: '+r.error.message);return}await refreshItems();clearItemMaster();toast(editing?'Item updated':'Item saved');
+}
+async function uploadItems(){
+ if(!remoteOK){toast('Supabase connection required');return}let f=$('itemUploadFile').files[0];if(!f){toast('Select Excel / CSV file');return}
+ try{let data=await f.arrayBuffer(),wb=XLSX.read(data,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],raw=XLSX.utils.sheet_to_json(ws,{defval:''});if(!raw.length){toast('File is empty');return}
+  let rows=raw.map(row=>{let m={};Object.keys(row).forEach(k=>m[cleanHeader(k)]=row[k]);let code=String(m.itemcode??m.code??m.partcode??'').trim().toUpperCase(),name=String(m.itemname??m.name??m.description??'').trim(),mrp=Number(m.mrp??m.price??0),base=Number(m.baseprice??m.base??m.sellingprice??0);let pt=String(m.pricingtype??m.pricetype??'DISCOUNT').trim().toUpperCase();if(!['DISCOUNT','NET'].includes(pt))pt='DISCOUNT';let ex=['yes','true','1','excluded','notpartofscheme'].includes(String(m.schemeexcluded??m.notpartofscheme??'').trim().toLowerCase());return {item_code:code,item_name:name,mrp,base_price:base,pricing_type:pt,scheme_excluded:ex}}).filter(x=>x.item_code&&x.item_name&&x.mrp>0);
+  if(!rows.length){toast('No valid rows. Need Item Code, Item Name, MRP');return}let unique=[...new Map(rows.map(x=>[x.item_code,x])).values()];$('uploadStatus').textContent='Uploading '+unique.length+' items…';
+  for(let i=0;i<unique.length;i+=300){let r=await sb.from('pos_items').upsert(unique.slice(i,i+300),{onConflict:'item_code'});if(r.error)throw r.error}
+  await refreshItems();$('uploadStatus').textContent=unique.length+' items uploaded / updated';toast('Item master uploaded to Supabase');
+ }catch(e){$('uploadStatus').textContent='Upload failed';toast('Upload failed: '+e.message)}
+}
+async function refreshPricing(){let r=await sb.from('pos_item_category_pricing').select('*').order('item_code');if(r.error){toast('Pricing fetch failed: '+r.error.message);return false}db.pricing=r.data.map(x=>({itemCode:x.item_code,category:x.customer_category,discount:+x.discount_pct,rate:+x.selling_rate}));cache();renderAll();return true}
+async function savePricingRow(){if(!remoteOK){toast('Supabase connection required');return}let code=$('priceItemCode').value.trim().toUpperCase(),cat=$('priceCategory').value,d=Math.max(0,Math.min(100,+$('priceDiscount').value||0)),r=+$('priceRate').value||0,i=db.items.find(x=>x.code===code);if(!i){toast('Item code not found');return}if(r<=0)r=+(i.mrp*(1-d/100)).toFixed(2);let q=await sb.rpc('pos_admin_upsert_pricing',{p_token:sessionToken,p_rows:[{item_code:code,customer_category:cat,discount_pct:d,selling_rate:r}]});if(q.error){toast(q.error.message);return}await refreshPricing();$('priceItemCode').value='';$('priceDiscount').value='';$('priceRate').value='';toast('Pricing saved')}
+async function uploadPricing(){if(!remoteOK){toast('Supabase connection required');return}let f=$('pricingUploadFile').files[0];if(!f){toast('Select pricing Excel / CSV');return}try{let data=await f.arrayBuffer(),wb=XLSX.read(data,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],raw=XLSX.utils.sheet_to_json(ws,{defval:''});let rows=[];for(let row of raw){let m={};Object.keys(row).forEach(k=>m[cleanHeader(k)]=row[k]);let code=String(m.itemcode??m.code??'').trim().toUpperCase(),cat=String(m.customercategory??m.category??'').trim().toUpperCase(),d=Number(m.discount??m.discountpct??m.discountpercent??0),rr=Number(m.sellingrate??m.rate??m.price??0),i=db.items.find(x=>x.code===code);if(!i||!['A','B','C','D'].includes(cat))continue;d=Math.max(0,Math.min(100,d||0));if(!(rr>0))rr=+(i.mrp*(1-d/100)).toFixed(2);rows.push({item_code:code,customer_category:cat,discount_pct:d,selling_rate:rr})}if(!rows.length){toast('No valid pricing rows');return}let unique=[...new Map(rows.map(x=>[x.item_code+'|'+x.customer_category,x])).values()];$('pricingUploadStatus').textContent='Uploading '+unique.length+' pricing rows…';for(let i=0;i<unique.length;i+=300){let q=await sb.rpc('pos_admin_upsert_pricing',{p_token:sessionToken,p_rows:unique.slice(i,i+300)});if(q.error)throw q.error}await refreshPricing();$('pricingUploadStatus').textContent=unique.length+' rows uploaded / updated';toast('Pricing master uploaded')}catch(e){$('pricingUploadStatus').textContent='Upload failed';toast('Pricing upload failed: '+e.message)}}
+async function loadBalances(){if(!sessionToken)return;let r=await sb.rpc('pos_get_customer_balances',{p_token:sessionToken});if(r.error){console.warn(r.error);return}db.balances={};(r.data||[]).forEach(x=>db.balances[x.customer_code]=+x.balance_amount||0)}
+async function fetchCustomerLedger(code){let r=await sb.rpc('pos_get_customer_ledger',{p_token:sessionToken,p_customer_code:code});if(r.error){toast(r.error.message);return []}return r.data||[]}
+async function recordCustomerPayment(){let c=currentCustomer();if(!c){toast('Select customer');return}let amount=+$('ledgerPayAmount').value||0,method=$('ledgerPayMethod').value,ref=$('ledgerPayRef').value.trim();if(amount<=0){toast('Enter payment amount');return}if(amount>customerBalance(c.code)){toast('Payment cannot exceed outstanding');return}let r=await sb.rpc('pos_record_customer_payment',{p_token:sessionToken,p_customer_code:c.code,p_amount:amount,p_method:method,p_reference:ref||null,p_note:'Customer payment',p_received_at:new Date().toISOString()});if(r.error){toast(r.error.message);return}await loadBalances();$('ledgerPayAmount').value='';$('ledgerPayRef').value='';await showCustomerHistory();renderBill();toast('Payment saved')}
+function loadCustomerForEdit(){let c=db.customers.find(x=>x.code===$('masterCustomerSelect').value);if(!c){clearCustomerMaster(false);return}$('mCustCode').value=c.code;$('mCustCode').readOnly=true;$('mCustName').value=c.name;$('mCustMobile').value=c.mobile;$('mCustAddress').value=c.address||'';$('mCustArea').value=c.area||'';$('mCustCategory').value=c.category||'D';$('mCustGSTIN').value=c.gstin||'';$('mCustRemark').value=c.remark||''}
+function clearCustomerMaster(resetSelect=true){if(resetSelect)$('masterCustomerSelect').value='';$('mCustCode').value='';$('mCustCode').readOnly=false;$('mCustName').value='';$('mCustMobile').value='';$('mCustMobile').readOnly=false;$('mCustAddress').value='';$('mCustArea').value='';$('mCustCategory').value='D';$('mCustGSTIN').value='';$('mCustRemark').value=''}
+function loadItemForEdit(){let i=db.items.find(x=>x.code===$('masterItemSelect').value);if(!i){clearItemMaster(false);return}$('mItemCode').value=i.code;$('mItemCode').readOnly=true;$('mItemName').value=i.name;$('mItemMRP').value=i.mrp;$('mItemPrice').value=i.basePrice;$('mPricingType').value=i.pricingType||'DISCOUNT';$('mSchemeExcluded').value=String(!!i.schemeExcluded)}
+function clearItemMaster(resetSelect=true){if(resetSelect&&$('masterItemSelect'))$('masterItemSelect').value='';$('mItemCode').value='';$('mItemCode').readOnly=false;$('mItemName').value='';$('mItemMRP').value='';$('mItemPrice').value='';$('mPricingType').value='DISCOUNT';$('mSchemeExcluded').value='false'}
+function editItemByCode(code){showPage('masters',document.querySelector('nav button[onclick*="masters"]'));$('masterItemSelect').value=code;loadItemForEdit();window.scrollTo({top:0,behavior:'smooth'})}
+function autoPickCustomerByMobile(v){let digits=String(v||'').replace(/\D/g,'');if(digits.length<10)return;let c=db.customers.find(x=>String(x.mobile||'').replace(/\D/g,'').slice(-10)===digits.slice(-10));if(c){$('posCustomer').value=c.code;renderBill()}}
+
+async function saveCustomerMaster(){
+ if(!remoteOK){toast('Supabase connection required');return}
+ let code=$('mCustCode').value.trim().toUpperCase(),name=$('mCustName').value.trim(),mobile=$('mCustMobile').value.trim(),address=$('mCustAddress').value.trim(),area=$('mCustArea').value.trim(),category=$('mCustCategory').value,gstin=$('mCustGSTIN').value.trim().toUpperCase(),remark=$('mCustRemark').value.trim();if(!name){toast('Customer name required');return}
+ let editing=!!$('masterCustomerSelect').value;
+ if(!editing){let md=mobile.replace(/\D/g,'').slice(-10);if(md&&db.customers.some(c=>String(c.mobile||'').replace(/\D/g,'').slice(-10)===md)){toast('Customer already registered');return}if(!code){let cr=await sb.rpc('pos_next_customer_code');if(cr.error){toast('Customer code failed: '+cr.error.message);return}code=String(cr.data||'').trim();}}
+ let q=editing?sb.from('pos_customers').update({customer_name:name,address,area,category,gstin,remark}).eq('customer_code',code):sb.from('pos_customers').insert({customer_code:code,customer_name:name,mobile:mobile||null,address,area,category,gstin,remark});
+ let r=await q.select();if(r.error){toast('Customer save failed: '+r.error.message);return}await refreshCustomers();clearCustomerMaster();toast(editing?'Customer updated':'Customer saved');
+}
+function showItemMatches(v){let box=$('itemMatches');if(!box)return;let q=String(v||'').trim().toUpperCase();let list=db.items.filter(i=>!q||i.code.includes(q)||i.name.toUpperCase().includes(q)).slice(0,20);box.innerHTML=list.map(i=>`<div onclick="pickItemCode('${i.code}')"><b>${i.code}</b> — ${i.name}</div>`).join('');box.style.display=list.length?'block':'none'}
+function pickItemCode(code){$('manualCode').value=code;$('itemMatches').style.display='none';$('manualQty').focus()}
+function pickFirstCustomerMatch(){let s=$('posCustomer');if(s&&s.options.length>1){s.selectedIndex=1;renderBill()}}
+function renderSavedBillDateList(){let el=$('savedBillDateList');if(!el)return;let d=$('savedBillDate')?.value||'';if(!d){el.innerHTML='Choose a date to list invoices.';return}let list=db.bills.filter(b=>localDateFrom(b.at)===d);el.innerHTML=list.length?list.map(b=>`<div style="margin:5px 0"><span class="clicklink" onclick="openBill(false,'${b.bill}')">${b.bill}</span> • ${b.customerName} • ${money(b.total)} • Bal ${money(Math.max(0,b.total-b.paidAmount))} • ${b.status||'ACTIVE'}</div>`).join(''):'No invoices on this date.'}
+function localDateFrom(v){let d=new Date(v);let y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`}
+async function showCustomerHistory(){let c=currentCustomer();if(!c)return;let list=db.bills.filter(b=>b.customerCode===c.code||(c.mobile&&b.customerMobile===c.mobile));let ledger=await fetchCustomerLedger(c.code);$('historyModalTitle').textContent=`${c.name} • History`;$('ledgerBalance').textContent=money(customerBalance(c.code));$('customerHistoryRows').innerHTML=list.map(b=>`<tr><td><span class="clicklink" onclick="closeHistoryModal();openBill(false,'${b.bill}')">${b.bill}</span></td><td>${new Date(b.at).toLocaleString()}</td><td>${money(b.total)}</td><td>${money(b.paidAmount)}</td><td>${money(Math.max(0,b.total-b.paidAmount))}</td><td><button class="btn secondary" onclick="closeHistoryModal();openBill(false,'${b.bill}')">Open</button></td></tr>`).join('')||'<tr><td colspan="6">No previous bills</td></tr>';$('customerLedgerRows').innerHTML=ledger.map(x=>`<tr><td>${new Date(x.entry_at).toLocaleString()}</td><td>${x.entry_type}</td><td>${x.reference_no||''}</td><td>${money(x.debit)}</td><td>${money(x.credit)}</td><td><b>${money(x.running_balance)}</b></td></tr>`).join('')||'<tr><td colspan="6">No ledger entries</td></tr>';$('historyModal').classList.add('open')}
+function closeHistoryModal(){$('historyModal').classList.remove('open')}
+
+function addSchemeSlab(target='',reward=''){let box=$('schemeSlabs');let d=document.createElement('div');d.className='row schemeSlab';d.innerHTML=`<div><input class="slabTarget" type="number" min="0.01" step="0.01" placeholder="Target ₹" value="${target}"></div><div><input class="slabReward" placeholder="Reward / Gift" value="${reward}"></div><button class="btn red" type="button" onclick="this.parentElement.remove()">×</button>`;box.appendChild(d)}
+function renderSchemeOptions(){if(!$('schemeSelect'))return;let old=$('schemeSelect').value;$('schemeSelect').innerHTML='<option value="">Select Scheme</option>'+db.schemes.map(s=>`<option value="${s.id}">${s.scheme_code||''} • ${s.scheme_name} • ${s.from_date} to ${s.to_date}</option>`).join('');if([...$('schemeSelect').options].some(o=>o.value===old))$('schemeSelect').value=old}
+async function saveScheme(){let name=$('schemeName').value.trim(),fr=$('schemeFrom').value,to=$('schemeTo').value;let slabs=[...document.querySelectorAll('.schemeSlab')].map(r=>({target_amount:+r.querySelector('.slabTarget').value||0,reward_description:r.querySelector('.slabReward').value.trim()})).filter(x=>x.target_amount>0);if(!name||!fr||!to||!slabs.length){toast('Scheme name, dates and at least one slab required');return}slabs.sort((a,b)=>a.target_amount-b.target_amount);let r=await sb.rpc('pos_create_scheme',{p_token:sessionToken,p_scheme_name:name,p_from_date:fr,p_to_date:to,p_slabs:slabs});if(r.error){toast(r.error.message);return}$('schemeSaveMsg').textContent='Scheme saved • '+r.data;toast('Scheme saved • '+r.data);$('schemeName').value='';$('schemeSlabs').innerHTML='';addSchemeSlab();await loadRemote()}
+async function loadSchemeReport(){if(!$('schemeReportRows'))return;let id=+$('schemeSelect').value||0;if(!id){schemeReportData=[];renderSchemeReport();return}let r=await sb.rpc('pos_scheme_customer_report_v2',{p_token:sessionToken,p_scheme_id:id});if(r.error){schemeReportData=[];$('schemeReportRows').innerHTML=`<tr><td colspan="8">${r.error.message}</td></tr>`;return}schemeReportData=r.data||[];renderSchemeReport()}
+function renderSchemeReport(){let q=String($('schemeCustomerSearch')?.value||'').replace(/\D/g,'');let rows=schemeReportData.filter(x=>!q||String(x.mobile||'').replace(/\D/g,'').includes(q));$('schemeReportRows').innerHTML=rows.map(x=>`<tr><td>${x.customer_code} — ${x.customer_name}</td><td>${x.mobile||''}</td><td>${money(x.total_purchase)}</td><td>${money(x.excluded_value)}</td><td><b>${money(x.eligible_purchase)}</b></td><td>${x.achieved_reward||'-'}</td><td>${x.next_target?money(x.next_target):'-'}</td><td>${x.next_target?'RUNNING':'MAX SLAB'}</td></tr>`).join('')||'<tr><td colspan="8">No matching purchase</td></tr>'}
+function downloadSchemeReportXLS(){if(!schemeReportData.length){toast('Load a scheme report first');return}let q=String($('schemeCustomerSearch')?.value||'').replace(/\D/g,'');let rows=schemeReportData.filter(x=>!q||String(x.mobile||'').replace(/\D/g,'').includes(q)).map(x=>({CustomerCode:x.customer_code,CustomerName:x.customer_name,Mobile:x.mobile,TotalPurchase:x.total_purchase,ExcludedValue:x.excluded_value,EligiblePurchase:x.eligible_purchase,AchievedReward:x.achieved_reward||'',NextTarget:x.next_target||'',NextReward:x.next_reward||''}));let ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Scheme Report');XLSX.writeFile(wb,'ABS_Scheme_Report.xlsx')}
+async function loadBikeGuru(){let [m,n]=await Promise.all([sb.from('bike_guru_members').select('*').order('created_at',{ascending:false}),sb.from('pos_admin_notifications').select('*').eq('notification_type','BIKE_GURU_REDEMPTION').order('created_at',{ascending:false}).limit(50)]);if(!m.error){db.bikeGuru=m.data||[];renderBikeGuruMembers()}if($('bgNotifications'))$('bgNotifications').innerHTML=(n.data||[]).map(x=>`<div>🔔 ${x.message} • ${new Date(x.created_at).toLocaleString()}</div>`).join('')||'No redemption notifications'}
+async function loadBikeGuruByMobile(){let mobile=$('bgMobile').value.trim(),d=mobile.replace(/\D/g,'').slice(-10);if(d.length<10)return;let x=(db.bikeGuru||[]).find(m=>String(m.mobile||'').replace(/\D/g,'').slice(-10)===d);if(x){$('bgName').value=x.member_name;$('bgName').readOnly=true;$('bgType').value=x.member_type||'MECHANIC';$('bgType').disabled=true;$('bgGarage').value=x.garage_name||'';$('bgPan').value=x.pan_number||'';$('bgUpi').value=x.upi_id||'';$('bgAddress').value=x.address||'';toast('Existing Bike Guru loaded — name/type locked')}else{$('bgName').readOnly=false;$('bgType').disabled=false}}
+function renderBikeGuruMembers(){if(!$('bgRows'))return;let q=String($('bgSearch')?.value||'').toLowerCase();let list=(db.bikeGuru||[]).filter(x=>!q||[x.mobile,x.member_name,x.garage_name,x.member_type].join(' ').toLowerCase().includes(q));$('bgRows').innerHTML=list.map(x=>`<tr><td>${x.mobile}</td><td>${x.member_type||''}</td><td>${x.member_name}</td><td>${x.garage_name||''}</td><td>${x.total_points||0}</td><td>${x.redeemed_points||0}</td><td><b>${Math.max(0,(x.total_points||0)-(x.redeemed_points||0))}</b></td><td><button class="btn green" onclick="requestBikeGuruRedeem(${x.id},'${String(x.member_name).replace(/'/g,"\'")}')">Redeem</button></td></tr>`).join('')||'<tr><td colspan="8">No Bike Guru registrations</td></tr>'}
+async function saveBikeGuruMember(){let mobile=$('bgMobile').value.trim(),member_name=$('bgName').value.trim(),member_type=$('bgType').value,garage_name=$('bgGarage').value.trim(),pan_number=$('bgPan').value.trim().toUpperCase(),upi_id=$('bgUpi').value.trim(),address=$('bgAddress').value.trim();if(mobile.replace(/\D/g,'').length<10||!member_name){toast('Valid mobile and name required');return}let r=await sb.rpc('bike_guru_register_member',{p_token:sessionToken,p_mobile:mobile,p_member_name:member_name,p_member_type:member_type,p_garage_name:garage_name,p_pan_number:pan_number||null,p_upi_id:upi_id||null,p_address:address||null});if(r.error){toast(r.error.message);return}toast('Bike Guru saved');['bgMobile','bgName','bgGarage','bgPan','bgUpi','bgAddress'].forEach(id=>$(id).value='');$('bgName').readOnly=false;$('bgType').disabled=false;await loadBikeGuru()}
+async function requestBikeGuruRedeem(id,name){let pts=Number(prompt(`Redeem points for ${name}`));if(!(pts>0))return;let r=await sb.rpc('bike_guru_request_redemption',{p_token:sessionToken,p_member_id:id,p_points:pts});if(r.error){toast(r.error.message);return}toast('Redemption request submitted');await loadBikeGuru()}
+async function validateSession(){if(!sessionToken){showLogin();return false}let r=await sb.rpc('pos_validate_session',{p_token:sessionToken});if(r.error||!r.data?.length){localStorage.removeItem(SESSION_KEY);sessionToken='';showLogin();return false}currentUser=r.data[0];applyUserUI();$('loginOverlay').style.display='none';await loadRemote();return true}
+function showLogin(){$('loginOverlay').style.display='flex';$('logoutBtn').classList.add('hidden');$('whoAmI').textContent=''}
+function applyUserUI(){$('whoAmI').textContent=`${currentUser.name||currentUser.username} • ${currentUser.role}`;$('logoutBtn').classList.remove('hidden');document.querySelectorAll('[data-admin="1"]').forEach(e=>e.classList.toggle('hidden',currentUser.role!=='ADMIN'))}
+async function loginUser(){let u=$('loginUsername').value.trim(),p=$('loginPassword').value;if(!u||!p){$('loginMsg').textContent='Enter username and password';return}let r=await sb.rpc('pos_login_user',{p_username:u,p_password:p});if(r.error||!r.data?.length){$('loginMsg').textContent=r.error?.message||'Invalid username/password';return}let x=r.data[0];sessionToken=x.session_token;localStorage.setItem(SESSION_KEY,sessionToken);currentUser={id:x.user_id,username:x.username,name:x.name,role:x.role};$('loginOverlay').style.display='none';applyUserUI();await loadRemote();toast('Login successful')}
+async function bootstrapAdmin(){let u=$('loginUsername').value.trim(),p=$('loginPassword').value,n=$('bootName').value.trim();if(!u||!p||!n){$('loginMsg').textContent='Username, password and Admin Name required';return}let r=await sb.rpc('pos_bootstrap_admin',{p_username:u,p_password:p,p_name:n});$('loginMsg').textContent=r.error?r.error.message:'First Admin created. Now tap Login.'}
+async function logoutUser(){if(sessionToken)await sb.rpc('pos_logout_user',{p_token:sessionToken});localStorage.removeItem(SESSION_KEY);sessionToken='';currentUser=null;showLogin()}
+async function loadUsers(){if(currentUser?.role!=='ADMIN')return;let r=await sb.rpc('pos_admin_list_users',{p_token:sessionToken});if(r.error){toast(r.error.message);return}let rows=r.data||[];$('userRows').innerHTML=rows.map(u=>`<tr><td>${u.username}</td><td>${u.name}</td><td>${u.role}</td><td>${u.active?'Yes':'No'}</td><td><button class="btn secondary" onclick='editUser(${JSON.stringify(u)})'>Edit</button> <button class="btn secondary" onclick="resetUserPassword(${u.id},'${u.username}')">Reset</button> <button class="btn red" onclick="deleteUser(${u.id},'${u.username}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="5">No users</td></tr>'}
+function editUser(u){$('uId').value=u.id;$('uUsername').value=u.username;$('uName').value=u.name;$('uRole').value=u.role;$('uActive').value=String(u.active);$('uPassword').value=''}
+function clearUserForm(){$('uId').value='';$('uUsername').value='';$('uName').value='';$('uRole').value='POS';$('uActive').value='true';$('uPassword').value=''}
+async function saveUser(){let id=$('uId').value?+$('uId').value:null,u=$('uUsername').value.trim(),n=$('uName').value.trim(),role=$('uRole').value,active=$('uActive').value==='true',pwd=$('uPassword').value;if(!u||!n||(!id&&!pwd)){toast('Username, name and password required for new user');return}let r=await sb.rpc('pos_admin_save_user',{p_token:sessionToken,p_id:id,p_username:u,p_name:n,p_role:role,p_active:active,p_password:pwd||null});if(r.error){toast(r.error.message);return}clearUserForm();await loadUsers();toast('User saved')}
+async function deleteUser(id,u){if(!confirm(`Delete user ${u}?`))return;let r=await sb.rpc('pos_admin_delete_user',{p_token:sessionToken,p_id:id});if(r.error){toast(r.error.message);return}await loadUsers();toast('User deleted')}
+async function resetUserPassword(id,u){let p=prompt(`New password for ${u}`);if(!p)return;let r=await sb.rpc('pos_admin_reset_password',{p_token:sessionToken,p_id:id,p_new_password:p});if(r.error){toast(r.error.message);return}toast('Password reset')}
+
+function renderHistory(){let q=($('historySearch').value||'').toLowerCase(),d=$('historyDate')?.value||'';let list=db.bills.filter(b=>(!q||[b.bill,b.customerName,b.customerMobile].join(' ').toLowerCase().includes(q))&&(!d||localDateFrom(b.at)===d));$('historyRows').innerHTML=list.map(b=>`<tr><td><span class="clicklink" onclick="previewBillPDF('${b.bill}')">${b.bill}</span></td><td>${new Date(b.at).toLocaleString()}</td><td>${b.customerName}</td><td>${b.paymentMethod}</td><td><b>${money(b.total)}</b></td><td>${money(b.paidAmount)}</td><td>${money(Math.max(0,b.total-b.paidAmount))}</td><td>${b.status||'ACTIVE'}</td><td><button class="btn green" onclick="previewBillPDF('${b.bill}')">PDF</button></td></tr>`).join('')||'<tr><td colspan="9">No bills</td></tr>'}
+async function previewBillPDF(no){let b=await fetchBill(no);if(!b){toast('Bill not found');return}let {jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'});doc.setFontSize(16);doc.text('ABS CORP',105,15,{align:'center'});doc.setFontSize(11);doc.text('POS SALES INVOICE',105,21,{align:'center'});doc.text(`Bill: ${b.bill}`,15,31);doc.text(`Date: ${new Date(b.at).toLocaleString()}`,15,37);doc.text(`Customer: ${b.customerName}`,15,43);if(b.customerMobile)doc.text(`Mobile: ${b.customerMobile}`,15,49);let y=59;doc.setFont(undefined,'bold');doc.text('Item',15,y);doc.text('Qty',115,y);doc.text('Rate',140,y);doc.text('Amount',170,y);doc.setFont(undefined,'normal');y+=6;b.lines.forEach(l=>{if(y>275){doc.addPage();y=20}doc.text(`${l.itemCode} - ${String(l.name||'').slice(0,38)}`,15,y);doc.text(String(l.qty),115,y);doc.text(Number(l.rate||0).toFixed(2),140,y);doc.text(Number(l.amount||0).toFixed(2),170,y);y+=6});y+=4;doc.setFont(undefined,'bold');doc.text(`Bill Amount: ${money(b.total)}`,195,y,{align:'right'});y+=6;doc.text(`Paid: ${money(b.paidAmount)}`,195,y,{align:'right'});y+=6;doc.text(`Balance: ${money(Math.max(0,b.total-b.paidAmount))}`,195,y,{align:'right'});let blob=doc.output('blob'),url=URL.createObjectURL(blob);$('pdfFrame').src=url;$('pdfDownload').href=url;$('pdfDownload').download=`${b.bill}.pdf`;$('pdfModal').classList.add('open')}
+function closePdfModal(){$('pdfModal').classList.remove('open');$('pdfFrame').src='about:blank'}
+$('qrDate').value=localDate();if($('schemeSlabs')&&!$('schemeSlabs').children.length)addSchemeSlab();if($('schemeFrom')){let d=new Date(),y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0');$('schemeFrom').value=`${y}-${m}-01`;$('schemeTo').value=localDate()}validateSession();
+
+</script>
+</body></html>
