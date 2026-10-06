@@ -1,0 +1,1570 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ABS POS • Bike Guru • V8.0 UAT CANDIDATE</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{--bg:#f4f7fb;--card:#fff;--ink:#172033;--muted:#68758b;--blue:#1558d6;--green:#16845b;--red:#c63a3a;--line:#dfe6f0;--soft:#edf4ff}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--ink)}
+header{position:sticky;top:0;z-index:20;background:#123f91;color:#fff;padding:12px 16px}
+.brand{display:flex;justify-content:space-between;gap:12px;align-items:center}.brand h1{font-size:19px;margin:0}.tiny{font-size:11px}.muted{color:var(--muted);font-size:12px}
+nav{display:flex;gap:7px;margin-top:9px;overflow:auto}nav button{border:0;border-radius:9px;padding:8px 11px;font-weight:700;background:#ffffff20;color:#fff;white-space:nowrap}nav button.active{background:#fff;color:#123f91}
+main{max-width:1450px;margin:auto;padding:12px}.page{display:none}.page.active{display:block}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px;box-shadow:0 5px 18px #1a33570d}
+h2,h3{margin:0 0 10px}label{display:block;font-size:12px;font-weight:700;margin:7px 0 4px;color:#4f5d72}
+input,select{width:100%;padding:9px 10px;border:1px solid #cbd6e5;border-radius:9px;background:#fff;font-size:14px}
+.row{display:flex;gap:7px;align-items:center}.row>*{flex:1}.btn{border:0;border-radius:9px;padding:9px 11px;background:var(--blue);color:#fff;font-weight:800;cursor:pointer}.btn.secondary{background:#eaf1ff;color:#174da8}.btn.green{background:var(--green)}.btn.red{background:var(--red)}.btn.gray{background:#657184}
+.mode{display:flex;gap:6px;margin-bottom:8px}.mode button{flex:1}.mode .on{outline:3px solid #bdd2ff}
+.pos3{display:grid;grid-template-columns:27% 27% 46%;gap:10px}.panel1{border-top:4px solid #1558d6}.panel2{border-top:4px solid #8c57c7}.panel3{border-top:4px solid #16845b}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:8px;border-bottom:1px solid #e6ebf2;text-align:left}th{background:#f3f6fa;position:sticky;top:0}.tablewrap{overflow:auto;max-height:360px;border:1px solid #e5eaf1;border-radius:10px}
+.total{font-size:26px;font-weight:900;text-align:right}.billactions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+.lookup{display:grid;grid-template-columns:1fr auto;gap:7px}.divider{height:1px;background:#e3e8ef;margin:11px 0}
+.badge{display:inline-block;border-radius:999px;padding:3px 7px;background:#eaf1ff;color:#174da8;font-size:10px;font-weight:800}
+.qrgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:9px}.qrlabel{text-align:center;background:#fff;border:1px dashed #777;padding:8px;page-break-inside:avoid}.qrlabel .serial{font-size:9px;word-break:break-all}
+.toast{display:none;position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#172033;color:#fff;padding:10px 15px;border-radius:9px;z-index:100}
+#receiptPrint{display:none}
+.loginOverlay{position:fixed;inset:0;background:#eef3fb;z-index:999;display:flex;align-items:center;justify-content:center;padding:16px}.loginCard{width:min(430px,100%);background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 12px 40px #18345a22}.clicklink{color:#1558d6;text-decoration:underline;cursor:pointer;font-weight:800}.modal{display:none;position:fixed;inset:0;background:#0007;z-index:300;align-items:center;justify-content:center;padding:14px}.modal.open{display:flex}.modalbox{background:#fff;border-radius:14px;padding:14px;width:min(900px,100%);max-height:88vh;overflow:auto}.suggestbox{border:1px solid #d8e0ec;border-radius:9px;max-height:180px;overflow:auto;margin-top:4px;display:none}.suggestbox div{padding:8px;border-bottom:1px solid #edf1f6;cursor:pointer}.suggestbox div:hover{background:#edf4ff}.userbar{display:flex;gap:8px;align-items:center}.hidden{display:none!important}
+@media(max-width:900px){.pos3{grid-template-columns:1fr}.billactions{grid-template-columns:1fr 1fr}}
+@media print{
+ body *{visibility:hidden!important}
+ #receiptPrint,#receiptPrint *{visibility:visible!important}
+ #receiptPrint{display:block!important;position:absolute;left:0;top:0;width:76mm;color:#000;font-family:monospace;font-size:11px}
+ #receiptPrint table{font-size:10px}#receiptPrint th,#receiptPrint td{padding:3px;border-bottom:1px dashed #aaa}
+ @page{size:80mm auto;margin:2mm}
+}
+
+/* V9.9 global blocking action-result dialog */
+#globalActionDialog{display:none;position:fixed;inset:0;background:#0008;z-index:5000;align-items:center;justify-content:center;padding:18px}
+#globalActionDialog.show{display:flex}
+#globalActionDialog .gadbox{width:min(430px,96vw);background:#fff;border-radius:16px;padding:20px;box-shadow:0 18px 60px #0005;text-align:center}
+#globalActionDialog .gadicon{font-size:38px;line-height:1;margin-bottom:8px}
+#globalActionDialog .gadtitle{font-size:20px;font-weight:900;margin-bottom:7px}
+#globalActionDialog .gadmsg{white-space:pre-wrap;word-break:break-word;margin-bottom:15px;color:#334}
+#globalActionDialog .gadok{min-width:120px}
+body.action-dialog-open{overflow:hidden}
+</style>
+</head>
+<body>
+<header>
+ <div class="brand"><div><h1>ABS POS • Bike Guru • V5.0 FINAL RECONCILED</h1><div class="tiny">Combined POS • pricing + cancellation + schemes + Bike Guru</div></div><div class="userbar"><div id="dbState" class="tiny">Connecting…</div><div id="whoAmI" class="tiny"></div><button id="logoutBtn" class="btn secondary hidden" onclick="logoutUser()">Logout</button></div></div>
+ <nav>
+  <button class="active" data-permission="billing" onclick="showPage('billing',this)">POS Billing</button>
+  <button data-permission="dashboard" onclick="showPage('dashboard',this);loadPosDashboard()">Dashboard</button>
+  <button data-permission="customer_report" onclick="showPage('customerReport',this)">Customer Sales & Outstanding</button>
+  <button data-permission="qr" onclick="showPage('qr',this)">QR Generate</button>
+  <button data-permission="masters" onclick="showPage('masters',this)">Masters</button>
+  <button data-permission="history" onclick="showPage('history',this)">Bill History</button>
+  <button data-permission="history" onclick="showPage('salesReturn',this)">Sales Return</button>
+  <button data-permission="schemes" onclick="showPage('schemes',this);loadSchemeReport()">Schemes</button>
+  <button data-permission="bikeguru" onclick="showPage('bikeguru',this);loadBikeGuru()">Bike Guru</button>
+  <button data-permission="collections" onclick="showPage('collections',this)">Collections</button>
+  <button data-permission="users" onclick="showPage('users',this)">Users</button>
+ </nav>
+</header>
+
+<main>
+<section id="dashboard" class="page">
+<div class="card"><div class="row"><h2 style="flex:1">POS Dashboard</h2><div><label>From Date</label><input id="dashFrom" type="date" onchange="loadPosDashboard()"></div><div><label>To Date</label><input id="dashTo" type="date" onchange="loadPosDashboard()"></div></div><div id="dashCards" class="grid" style="margin-top:10px"></div></div>
+<div class="row"><div class="card"><h3>Payment / Collection Breakup</h3><div id="dashPayment" class="tiny">Load dashboard</div></div><div class="card"><h3>Top Selling Items</h3><div class="tablewrap"><table><thead><tr><th>Item</th><th>Qty</th><th>Net Sale</th></tr></thead><tbody id="dashTopItems"></tbody></table></div></div></div>
+<div class="card"><h3>Recent Bills</h3><div class="tablewrap"><table><thead><tr><th>Bill</th><th>Time</th><th>Customer</th><th>Net Amount</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead><tbody id="dashRecentBills"></tbody></table></div></div>
+</section>
+<section id="customerReport" class="page">
+<div class="card"><h2>Customer Sales & Outstanding Report</h2>
+<div class="row"><div><label>From Date</label><input id="crFrom" type="date"></div><div><label>To Date</label><input id="crTo" type="date"></div><div><label>Customer</label><input id="crCustomer" placeholder="Name / code / mobile" oninput="debouncedCustomerSalesReport()"></div></div>
+<div class="row" style="margin-top:8px"><button class="btn" onclick="loadCustomerSalesReport()">Load Report</button><button class="btn secondary" onclick="downloadCustomerSalesReport()">Download Excel</button></div>
+<div id="crSummary" class="tiny" style="margin-top:10px">Select date range.</div>
+<div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>Customer</th><th>Purchase</th><th>Cash</th><th>Online/UPI</th><th>Old Balance Receipt</th><th>Return</th><th>Money Refunded</th><th>Current Outstanding</th><th>Available Credit</th><th>Action</th></tr></thead><tbody id="crRows"><tr><td colspan="10">Load report</td></tr></tbody></table></div>
+</div></section>
+<section id="billing" class="page active">
+ <div class="pos3">
+  <div class="card panel1">
+   <h3>1 • Customer</h3>
+   <div class="mode"><button id="existingBtn" class="btn secondary on" onclick="customerMode('existing')">Existing</button><button id="newBtn" class="btn secondary" onclick="customerMode('new')">New / Walk-in</button></div>
+   <div id="existingBox">
+    <label>Search Existing Customer</label><input id="posCustomerSearch" placeholder="Name / mobile / customer code" oninput="populateCustomerSelect(this.value);autoPickCustomerByMobile(this.value)" onkeydown="if(event.key==='Enter')pickFirstCustomerMatch()">
+    <label>Select Customer</label><select id="posCustomer" onchange="renderBill()"></select>
+    <div id="custInfo" class="muted" style="margin-top:7px"></div><button id="custHistoryBtn" class="btn secondary hidden" style="width:100%;margin-top:7px" onclick="showCustomerHistory()">View Customer History</button>
+   </div>
+   <div id="newBox" style="display:none">
+    <label>Mobile</label><input id="newMobile" inputmode="numeric" placeholder="Mobile no.">
+    <label>Name</label><input id="newName" placeholder="Customer name / Walk-in">
+    <label>Address</label><input id="newAddress" placeholder="Address">
+    <div class="row"><div><label>Category</label><select id="newCategory"><option>A</option><option>B</option><option>C</option><option selected>D</option></select></div><div><label>Area</label><input id="newArea" placeholder="Area"></div></div>
+    <button class="btn green" style="width:100%;margin-top:9px" onclick="saveNewCustomer()">Save Customer & Use</button>
+    <div class="muted" style="margin-top:6px">Saving here creates the POS Customer Master record in Supabase.</div>
+   </div>
+   <div class="divider"></div>
+   <label>Payment Method</label><select id="paymentMethod" onchange="syncBillPayment()"><option value="CASH">Cash</option><option value="ONLINE/UPI">Online / UPI</option><option value="MIXED">Mixed</option><option value="CREDIT">Credit / Pay Later</option></select>
+   <div class="row"><div><div><label>Available Customer Credit</label><input id="billAvailableCredit" readonly value="₹0"></div><div><label>Use Customer Credit</label><input id="billCreditUsed" type="number" min="0" step="0.01" value="0" oninput="renderBill()"></div><label>Cash Amount</label><input id="billCashAmount" type="number" min="0" step="0.01" value="0" oninput="syncBillPayment()"></div><div><label>Online / UPI Amount</label><input id="billOnlineAmount" type="number" min="0" step="0.01" value="0" oninput="syncBillPayment()"></div></div>
+   <div style="margin-top:8px"><label style="display:flex;align-items:center;gap:8px;font-weight:700"><input id="fullyCredit" type="checkbox" onchange="syncBillPayment()" style="width:auto"> Fully Credit</label><div class="tiny">Required only when saving a customer bill with zero payment.</div></div>
+   <input id="paidAmount" type="hidden" value="0"><div class="tiny" style="margin-top:5px">Received: <b id="billPaidTotal">₹0</b></div><div id="billSummaryAmounts" class="card" style="margin-top:8px"><div class="row"><div><div class="tiny">Bill Amount</div><b id="summaryBillAmount">₹0</b></div><div><div class="tiny">Paid Amount</div><b id="summaryPaidAmount">₹0</b></div><div><div class="tiny">Balance Amount</div><b id="summaryBalanceAmount">₹0</b></div></div></div>
+   <div class="card" style="margin-top:9px;padding:9px;background:#f7faff"><div class="tiny">Previous Outstanding</div><b id="previousOutstanding">₹0</b><div class="tiny" style="margin-top:5px">Total Outstanding After This Bill</div><b id="totalOutstanding">₹0</b></div>
+  </div>
+
+  <div class="card panel2">
+   <h3>2 • Scan / Item Entry</h3>
+   <label>QR No.</label>
+   <div class="lookup"><input id="scanNo" placeholder="Scan or type QR no." onkeydown="if(event.key==='Enter')scanAdd()"><button class="btn" onclick="scanAdd()">Add</button></div>
+   <div class="row" style="margin-top:7px"><button id="cameraStartBtn" class="btn green" style="width:100%" onclick="startCameraScan()">📷 Scan with Camera</button><button id="cameraStopBtn" class="btn red hidden" style="width:100%" onclick="stopCameraScan()">Stop Camera</button></div>
+   <div id="cameraReader" class="hidden" style="width:100%;margin-top:8px;border-radius:10px;overflow:hidden;background:#111"></div>
+   <div id="cameraStatus" class="muted" style="margin-top:5px">Rear camera QR scanner.</div>
+   <div class="divider"></div>
+   <div class="muted"><b>OR</b> when barcode is not available</div>
+   <label>Item Code</label><input id="manualCode" list="itemCodeList" autocomplete="off" placeholder="Type item code / close match" oninput="showItemMatches(this.value)" onfocus="showItemMatches(this.value)">
+   <datalist id="itemCodeList"></datalist><div id="itemMatches" class="suggestbox"></div>
+   <label>Quantity</label><input id="manualQty" type="number" min="1" value="1">
+   <button class="btn secondary" style="width:100%;margin-top:9px" onclick="manualAdd()">Add Item + Qty</button>
+   <div class="divider"></div>
+   <div class="muted">Scanned pieces keep piece-level QR traceability. Manual lines are saved as MANUAL source.</div>
+  </div>
+
+  <div class="card panel3">
+   <div class="row"><div><h3>3 • Live Bill</h3><div class="muted" id="currentBillNo"></div></div><button class="btn gray" onclick="clearBill()">Clear</button></div>
+   <div class="tablewrap"><table><thead><tr><th>Item</th><th>MRP</th><th>Qty</th><th>Rate</th><th>Disc</th><th>Amount</th><th></th></tr></thead><tbody id="billRows"></tbody></table></div>
+   <div style="margin-top:9px"><div class="muted" style="text-align:right">Bill Amount</div><div class="total" id="billTotal">₹0</div><div class="muted" style="text-align:right;margin-top:4px">Current Bill Balance: <b id="currentBillBalance">₹0</b></div></div>
+   <div class="divider"></div>
+<h3>Final Bill Adjustment</h3>
+<div class="row"><div><label>Bill Discount</label><input id="billDiscount" type="number" min="0" step="0.01" value="0" oninput="renderBill()"></div><div><label>Discount Type</label><select id="billDiscountType" onchange="renderBill()"><option value="AMOUNT">Amount ₹</option><option value="PERCENT">Percent %</option></select></div></div>
+<label style="margin-top:7px">Bill Discount Reason</label><input id="billDiscountReason" placeholder="Mandatory when bill discount is used">
+<div class="row" style="margin-top:8px"><div><label>Round Off</label><input id="billRoundOff" readonly value="₹0"></div><div><label>Final Net Bill</label><input id="finalNetBill" readonly value="₹0"></div></div>
+<div class="billactions"><button class="btn green" onclick="saveBill(false)">Save Bill</button><button class="btn" onclick="saveBill(true)">Save & Print</button></div><div class="billactions"><button class="btn secondary" onclick="holdCurrentBill()">Hold Bill</button><button class="btn secondary" onclick="openHeldBills()">Resume Bill</button></div>
+   <div class="divider"></div>
+   <label>Open Saved Bill</label><select id="billSearch"><option value="">Select saved bill no.</option></select>
+   <div class="row" style="margin-top:7px"><button class="btn secondary" style="width:100%" onclick="openBill(false)">Open Bill</button></div>
+   <label>Invoice Date</label><input id="savedBillDate" type="date" oninput="renderSavedBillDateList()">
+   <div id="savedBillDateList" class="muted" style="margin-top:6px"></div>
+   <button class="btn secondary" style="width:100%;margin-top:7px" onclick="reprintOpenedBill()">Print / Reprint Opened Bill</button><button id="returnOpenedBillBtn" class="btn secondary" style="width:100%;margin-top:7px" onclick="startReturnOpenedBill()">Sales Return</button><button id="cancelOpenedBillBtn" class="btn red hidden" style="width:100%;margin-top:7px" onclick="cancelOpenedBill()">Cancel Opened Bill</button><button id="correctOpenedBillBtn" class="btn secondary hidden" style="width:100%;margin-top:7px" onclick="correctOpenedBill()">Admin Bill Correction</button>
+   <div id="openedBillInfo" class="muted" style="margin-top:6px"></div>
+   <div id="openedBillDetails" style="margin-top:7px"></div>
+  </div>
+ </div>
+</section>
+
+<section id="qr" class="page">
+ <div class="card">
+  <h2>Point 1 • Unique QR Generate & Print</h2>
+  <div class="row"><div><label>Item Code</label><select id="qrItemCode"><option value="">Select Item Code</option></select></div><div><label>Pieces</label><input id="qrQty" type="number" min="1" max="500" value="10"></div></div>
+  <div class="row"><div><label>Batch No.</label><input id="qrBatch" placeholder="Batch"></div><div><label>Packed / Received Date</label><input id="qrDate" type="date"></div></div>
+  <div class="row" style="margin-top:9px"><button class="btn" onclick="generateQRBatch()">Generate + Save</button><button class="btn secondary" onclick="printQRLabels()">Print Labels</button></div>
+  <div class="muted" style="margin-top:7px">Each physical piece gets one permanent 128-bit secure token. Mutable product/price data stays in Supabase.</div>
+ </div>
+ <div class="card"><h3>Label Preview</h3><div id="qrPreview" class="qrgrid"><div class="muted">Generate a batch to preview labels.</div></div></div>
+</section>
+
+<section id="masters" class="page">
+ <div class="card">
+  <h3>Company Profile • Invoice Header</h3>
+  <div class="row"><div><label>Firm Name</label><input id="cpFirmName" placeholder="Firm / Company Name"></div><div><label>GST No.</label><input id="cpGstin" placeholder="GSTIN"></div></div>
+  <div class="row"><div><label>Invoice Title</label><input id="cpInvoiceTitle" value="TAX INVOICE" placeholder="TAX INVOICE"></div><div><label>Mobile / Phone</label><input id="cpPhone" placeholder="Phone"></div></div>
+  <label>Address</label><input id="cpAddress" placeholder="Firm address">
+  <button class="btn" style="margin-top:8px" onclick="saveCompanyProfile()">Save Company Profile</button>
+  <div class="tiny" style="margin-top:6px">Saved profile will be used automatically on new bill prints and reprints.</div>
+ </div>
+ <div class="row">
+  <div class="card">
+   <h3>Item Master • Add / Edit</h3>
+   <label>Search Item</label><input id="masterItemSearch" placeholder="Code / name / brand / product" oninput="filterMasterItems(this.value)"><label>Select Existing Item</label><select id="masterItemSelect" onchange="loadItemForEdit()"><option value="">New Item</option></select>
+   <label>Code</label><input id="mItemCode" placeholder="Item code">
+   <label>Name</label><input id="mItemName" placeholder="Item name">
+   <div class="row"><div><label>Brand</label><select id="mItemBrand"><option value="">Select Brand</option></select></div><div><label>Product</label><select id="mItemProduct"><option value="">Select Product</option></select></div></div>
+   <div class="row"><div><label>Standard Packing (PCS)</label><input id="mItemPacking" type="number" min="1" step="1" value="1"></div><div><label>MRP</label><input id="mItemMRP" type="number" min="0" step="0.01"></div></div><div class="row"><div><label>Base / Net Price</label><input id="mItemPrice" type="number" min="0" step="0.01"></div></div>
+   <div class="row"><div><label>Pricing Type</label><select id="mPricingType"><option value="DISCOUNT">Discount</option><option value="NET">Net Price</option></select></div><div><label>Scheme</label><select id="mSchemeExcluded"><option value="false">Part of Scheme</option><option value="true">Not Part of Scheme</option></select></div></div>
+   <button class="btn" style="width:100%;margin-top:8px" onclick="saveItem()">Save / Update Item</button>
+   <button class="btn secondary" style="width:100%;margin-top:6px" onclick="clearItemMaster()">New Item</button>
+  </div>
+  <div class="card">
+   <h3>Item Master • Bulk Upload</h3>
+   <label>Excel / CSV File</label><input id="itemUploadFile" type="file" accept=".xlsx,.xls,.csv">
+   <div class="muted" style="margin:7px 0">Required: Item Code, Item Name, Brand, Product, Standard Packing, MRP. Optional: Base Price.</div><button class="btn secondary" style="width:100%;margin-bottom:7px" onclick="downloadItemMasterFormat()">Download Item Master Upload Format (.xlsx)</button>
+   <button class="btn green" style="width:100%" onclick="uploadItems()">Upload Items to Supabase</button>
+   <div id="uploadStatus" class="muted" style="margin-top:7px"></div>
+  </div>
+ </div>
+ <div class="row">
+  <div class="card"><h3>Brand Master</h3><label>Brand Name</label><input id="newBrandName" placeholder="Brand name"><button class="btn" style="width:100%;margin-top:8px" onclick="saveBrandMaster()">Add Brand</button><div id="brandMasterList" class="muted" style="margin-top:8px"></div></div>
+  <div class="card"><h3>Product Master</h3><label>Product Name</label><input id="newProductName" placeholder="Product name"><button class="btn" style="width:100%;margin-top:8px" onclick="saveProductMaster()">Add Product</button><div id="productMasterList" class="muted" style="margin-top:8px"></div></div>
+ </div>
+ <div class="row">
+  <div class="card">
+   <h3>Customer Master • Add / Update</h3>
+   <label>Search Customer</label><input id="masterCustomerSearch" placeholder="Name / mobile / code / area" oninput="filterMasterCustomers(this.value)"><label>Customer</label><select id="masterCustomerSelect" onchange="loadCustomerForEdit()"><option value="">New Customer</option></select>
+   <div class="row"><div><label>Customer Code</label><input id="mCustCode" placeholder="Auto: CUST0001"></div><div><label>Mobile</label><input id="mCustMobile" inputmode="numeric"></div></div>
+   <label>Name</label><input id="mCustName">
+   <label>Address</label><input id="mCustAddress">
+   <div class="row"><div><label>Area</label><input id="mCustArea"></div><div><label>Category</label><select id="mCustCategory"><option>A</option><option>B</option><option>C</option><option selected>D</option></select></div></div>
+   <div class="row"><div><label>GSTIN</label><input id="mCustGSTIN"></div><div><label>Remark</label><input id="mCustRemark"></div></div>
+   <button class="btn" style="width:100%;margin-top:8px" onclick="saveCustomerMaster()">Save / Update Customer</button>
+   <button class="btn secondary" style="width:100%;margin-top:6px" onclick="clearCustomerMaster()">New Customer</button>
+  </div>
+  <div class="card"><h3>Item × Customer Category Pricing</h3>
+<div id="currentPricingInfo" class="muted" style="margin:6px 0 10px">Select an item and category to see current pricing.</div><div class="row"><div><label>Item Code</label><input id="priceItemCode" list="itemCodeList" placeholder="Item code" oninput="showCurrentPricingInfo()" onchange="showCurrentPricingInfo()"></div><div><label>Customer Category</label><select id="priceCategory" onchange="showCurrentPricingInfo()"><option>A</option><option>B</option><option>C</option><option>D</option></select></div></div><div class="row"><div><label>Discount % (Discount items)</label><input id="priceDiscount" type="number" min="0" max="100" step="0.01"></div><div><label>Net / Selling Rate</label><input id="priceRate" type="number" min="0" step="0.01" placeholder="Optional; auto from MRP-discount"></div></div><button class="btn" style="width:100%;margin-top:8px" onclick="savePricingRow()">Save Pricing Row</button><div class="divider"></div><label>Pricing Master Excel / CSV</label><input id="pricingUploadFile" type="file" accept=".xlsx,.xls,.csv"><div class="muted" style="margin:7px 0">Columns: Item Code, Brand, Customer Category, Discount %, Selling Rate. Brand is reference; Item Code remains the pricing key.</div><button class="btn secondary" style="width:100%;margin-bottom:7px" onclick="downloadPricingMasterFormat()">Download Item × Category Upload Format (.xlsx)</button><div class="muted" style="margin:7px 0"><b>Billing priority:</b> Base/Net Price → Category Selling Rate → MRP less Category Discount.</div><button class="btn green" style="width:100%" onclick="uploadPricing()">Upload Pricing Master</button><div id="pricingUploadStatus" class="muted" style="margin-top:7px"></div></div>
+ </div>
+ <div class="card"><h3>Pricing Master • Item × Category Matrix</h3>
+<input id="pricingSearch" placeholder="Search item code / name / brand / product" oninput="renderMasterTables()">
+<div class="muted" style="margin:7px 0">Current discount is visible category-wise. Tap a % to load that Item + Category for editing.</div>
+<div class="tablewrap"><table><thead><tr><th>Item</th><th>MRP</th><th>Cat A</th><th>Cat B</th><th>Cat C</th><th>Cat D</th></tr></thead><tbody id="pricingRows"></tbody></table></div></div>
+ <div class="card"><h3>Items</h3><input id="itemMasterTableSearch" placeholder="Search code / item / brand / product" oninput="renderMasterTables()"><div class="tablewrap"><table><thead><tr><th>Code</th><th>Name</th><th>Brand</th><th>Pack</th><th>MRP</th><th>Base/Net</th><th>Pricing</th><th>Scheme</th></tr></thead><tbody id="itemRows"></tbody></table></div></div>
+ <div class="card"><h3>Customers</h3><input id="customerMasterTableSearch" placeholder="Search name / mobile / code / area" oninput="renderMasterTables()"><div class="tablewrap"><table><thead><tr><th>Code</th><th>Name</th><th>Mobile</th><th>Address</th><th>Category</th><th>Area</th></tr></thead><tbody id="customerRows"></tbody></table></div></div>
+</section>
+
+<section id="history" class="page">
+ <div class="card"><h2>Bill Search / Recall</h2>
+<div class="row"><div><label>Bill No.</label><input id="bsBillNo" oninput="debouncedBillSearch()" placeholder="Bill no."></div><div><label>Customer / Code</label><input id="bsCustomer" oninput="debouncedBillSearch()" placeholder="Name or code"></div><div><label>Mobile</label><input id="bsMobile" oninput="debouncedBillSearch()" placeholder="Mobile"></div></div>
+<div class="row"><div><label>QR / Serial</label><input id="bsQr" oninput="debouncedBillSearch()" placeholder="QR / serial"></div><div><label>From Date</label><input id="bsFrom" type="date" oninput="debouncedBillSearch()"></div><div><label>To Date</label><input id="bsTo" type="date" oninput="debouncedBillSearch()"></div></div>
+<div class="row" style="margin-top:8px"><button class="btn" onclick="searchBillsAdvanced()">Search Bills</button><button class="btn secondary" onclick="clearBillSearch()">Clear</button></div>
+<div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>Bill</th><th>Date</th><th>Customer</th><th>Amount</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead><tbody id="billSearchRows"><tr><td colspan="8">Enter search criteria.</td></tr></tbody></table></div>
+<div class="divider"></div><div class="row"><h3>Saved Bills</h3><input id="historySearch" placeholder="Quick search bill/customer/mobile" oninput="renderHistory()"></div><div class="row"><div><label>Date</label><input id="historyDate" type="date" oninput="renderHistory()"></div><div><label>&nbsp;</label><button class="btn secondary" style="width:100%" onclick="document.getElementById('historyDate').value='';renderHistory()">All Dates</button></div></div><div class="tablewrap"><table><thead><tr><th>Bill</th><th>Date</th><th>Customer</th><th>Mode</th><th>Bill Amount</th><th>Paid</th><th>Bill-time Balance</th><th>Status</th><th></th></tr></thead><tbody id="historyRows"></tbody></table></div></div>
+</section>
+
+
+<section id="schemes" class="page">
+ <div class="row">
+  <div class="card"><h2>Customer Purchase Scheme</h2><label>Scheme Name</label><input id="schemeName" placeholder="Monthly Gift Scheme"><div class="row"><div><label>From</label><input id="schemeFrom" type="date"></div><div><label>To</label><input id="schemeTo" type="date"></div></div><label>Slabs</label><div id="schemeSlabs"></div><button class="btn secondary" style="width:100%;margin-top:6px" onclick="addSchemeSlab()">+ Add Slab</button><button class="btn" style="width:100%;margin-top:8px" onclick="saveScheme()">Save Scheme</button><div id="schemeSaveMsg" class="muted" style="margin-top:6px"></div></div>
+  <div class="card"><h2>Scheme Report</h2><label>Select Scheme</label><select id="schemeSelect" onchange="loadSchemeReport()"></select><div class="row"><div><label>Search Customer</label><input id="schemeCustomerSearch" placeholder="Name / mobile / code" oninput="renderSchemeReport()"></div><div><label>&nbsp;</label><button class="btn green" style="width:100%" onclick="downloadSchemeReportXLS()">Download XLS</button></div></div><div class="muted" style="margin:7px 0">Items marked “Not Part of Scheme” are excluded.</div><div class="tablewrap"><table><thead><tr><th>Customer</th><th>Mobile</th><th>Total</th><th>Excluded</th><th>Eligible</th><th>Achieved Slab</th><th>Next Target</th><th>Status</th></tr></thead><tbody id="schemeReportRows"></tbody></table></div></div>
+ </div>
+</section>
+
+<section id="bikeguru" class="page">
+ <div class="row">
+  <div class="card"><h2>Bike Guru • Registration</h2><label>Mobile</label><input id="bgMobile" inputmode="numeric" onblur="loadBikeGuruByMobile()"><label>Type</label><select id="bgType"><option value="MECHANIC">Mechanic</option><option value="RETAILER">Retailer</option></select><label>Name</label><input id="bgName"><label>Garage / Shop Name</label><input id="bgGarage"><div class="row"><div><label>PAN</label><input id="bgPan"></div><div><label>UPI ID</label><input id="bgUpi"></div></div><label>Address / Area</label><input id="bgAddress"><button class="btn green" style="width:100%;margin-top:8px" onclick="saveBikeGuruMember()">Register / Update Bike Guru</button><div class="muted" style="margin-top:6px">For an existing mobile, Name and Type are locked. PAN and UPI cannot be duplicated.</div></div>
+  <div class="card"><h2>Bike Guru • Digital Marketing</h2>
+   <div class="row"><div><label>Type</label><select id="bgMkType"><option>PROMO</option><option>STOCK_CLEARANCE</option><option>NEW_ARRIVAL</option><option>BIKE_GURU_SPECIAL</option><option>ANNOUNCEMENT</option><option>FEATURED_PRODUCT</option></select></div><div><label>Target</label><select id="bgMkTarget"><option>BOTH</option><option>MECHANIC</option><option>RETAILER</option></select></div><div><label>Priority</label><input id="bgMkPriority" type="number" min="0" value="0"></div></div>
+   <label>Title</label><input id="bgMkTitle" placeholder="Offer / New Arrival title">
+   <label>Description</label><textarea id="bgMkDesc" placeholder="Offer details"></textarea>
+   <div class="row"><div><label>Item Code (optional)</label><select id="bgMkItem"><option value="">No specific item</option></select></div><div><label>Picture / Poster</label><input id="bgMkImageFile" type="file" accept="image/*" capture="environment" onchange="previewBgMarketingImage(this)"><input id="bgMkImage" type="hidden"><div id="bgMkImagePreview" class="tiny" style="margin-top:5px">No picture selected</div></div></div>
+   <div class="row"><div><label>From</label><input id="bgMkFrom" type="datetime-local"></div><div><label>To</label><input id="bgMkTo" type="datetime-local"></div></div>
+   <button class="btn green" onclick="saveBgMarketing()">Publish</button>
+   <div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>Type</th><th>Title</th><th>Target</th><th>Period</th><th>Leads</th><th>Status</th><th></th></tr></thead><tbody id="bgMkRows"><tr><td colspan="7">Loading…</td></tr></tbody></table></div>
+  </div>
+  <div class="card"><h2>Bike Guru • Point Value Period</h2>
+   <div class="row"><div><label>From Date / Time</label><input id="bgPvFrom" type="datetime-local"></div><div><label>To Date / Time</label><input id="bgPvTo" type="datetime-local"></div><div><label>₹ per Point</label><input id="bgPvRate" type="number" min="0.01" step="0.01" value="1"></div></div>
+   <div class="row"><input id="bgPvName" placeholder="Scheme name e.g. Festival Week"><button class="btn green" onclick="saveBgPointValue()">Save Point Value</button></div>
+   <div class="tiny">Periods cannot overlap. Applicable ₹/point is locked at QR scan time.</div>
+   <div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>Scheme</th><th>From</th><th>To</th><th>₹ / Point</th><th>Status</th><th></th></tr></thead><tbody id="bgPvRows"><tr><td colspan="6">Loading…</td></tr></tbody></table></div>
+  </div>
+  <div class="card"><h2>Bike Guru • Reward Definition</h2>
+   <div class="row"><div><label>Item Code</label><select id="bgRewardItem" onchange="loadBgRewardDefinition()"><option value="">Select Item</option></select></div><div><label>Status</label><select id="bgRewardActive"><option value="true">Active</option><option value="false">Inactive</option></select></div></div>
+   <div class="tiny">Har item ke liye Reward/Points + % define kijiye. Last slab ko Balance rakhiye.</div>
+   <div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>Reward / Points</th><th>%</th><th>Balance</th><th></th></tr></thead><tbody id="bgRewardRows"></tbody></table></div>
+   <div class="row" style="margin-top:8px"><button class="btn secondary" onclick="addBgRewardRow()">+ Add Slab</button><button class="btn green" onclick="saveBgRewardDefinition()">Save Reward Definition</button></div>
+   <div id="bgRewardSummary" class="muted" style="margin-top:7px"></div>
+  </div>
+  <div class="card"><h2>Bike Guru • Redemption Management</h2>
+   <div class="row"><select id="bgRedStatus" onchange="loadBgRedemptions()"><option value="">All Status</option><option>PENDING</option><option>APPROVED</option><option>PAID</option><option>CREDITED</option><option>REJECTED</option></select><input id="bgRedSearch" placeholder="Name / Mobile / Garage" oninput="renderBgRedemptions()"></div>
+   <div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>Date</th><th>Member</th><th>Mobile</th><th>Points</th><th>₹ Value</th><th>Mode</th><th>Status</th><th>Action</th></tr></thead><tbody id="bgRedRows"><tr><td colspan="8">Loading…</td></tr></tbody></table></div>
+  </div>
+  <div id="bgRedModal" class="overlay hidden"><div class="loginbox" style="max-width:760px"><div class="row"><h2 style="flex:1">Redemption Detail</h2><button class="btn secondary" onclick="$('bgRedModal').classList.add('hidden')">Close</button></div><div id="bgRedDetail"></div></div></div>
+  <div class="card"><h2>Bike Guru Dashboard</h2><label>Search Mobile / Name / Garage</label><input id="bgSearch" oninput="renderBikeGuruMembers()"><div class="tablewrap"><table><thead><tr><th>Mobile</th><th>Type</th><th>Name</th><th>Garage</th><th>Points</th><th>Redeemed</th><th>Available</th><th>Action</th></tr></thead><tbody id="bgRows"></tbody></table></div><div class="card" style="margin-top:10px"><b>PIN Reset Requests</b><div id="bgPinResetRequests" class="muted" style="margin-top:6px">Load Bike Guru to view requests.</div></div><div id="bgAdminNotice" class="card" style="margin-top:10px;background:#fff9e8"><b>Admin Redemption Notifications</b><div id="bgNotifications" class="muted" style="margin-top:6px"></div></div></div>
+ </div>
+</section>
+
+<section id="collections" class="page"><div class="card"><h2>Collection / Reconciliation</h2>
+<div class="row"><div><label>From Date</label><input id="collectionFrom" type="date"></div><div><label>To Date</label><input id="collectionTo" type="date"></div></div>
+<button class="btn" onclick="loadCollectionReport()">Load Report</button><div id="collectionStatus" class="muted" style="margin-top:7px"></div>
+<div class="row" style="margin-top:8px"><div class="card"><div class="tiny">Bill-time Collection</div><b id="collectionBillTotal">₹0</b></div><div class="card"><div class="tiny">Balance Receipts</div><b id="collectionReceiptTotal">₹0</b></div></div>
+<div class="row" style="margin-top:10px"><div class="card"><div class="tiny">Cash</div><b id="collectionCash">₹0</b></div><div class="card"><div class="tiny">Online / UPI</div><b id="collectionOnline">₹0</b></div><div class="card"><div class="tiny">Total</div><b id="collectionTotal">₹0</b></div></div>
+<div class="tablewrap"><table><thead><tr><th>Date</th><th>Customer</th><th>Reference</th><th>Source</th><th>Cash</th><th>Online</th><th>Total</th></tr></thead><tbody id="collectionRows"></tbody></table></div>
+</div></section>
+
+
+
+<section id="dayClosing" class="page"><div class="card">
+<h2>Day Closing / Cash Reconciliation</h2>
+<div class="row"><div><label>Closing Date</label><input id="closeDate" type="date"></div><div><label>Opening Cash</label><input id="openingCash" type="number" min="0" step="0.01" value="0"></div></div>
+<div class="row" style="margin-top:8px"><button class="btn" onclick="loadDayClosing()">Calculate Closing</button></div>
+<div id="closingSummary" class="tiny" style="margin-top:10px">Select date and calculate.</div>
+<div class="row" style="margin-top:10px"><div><label>Actual Cash in Hand</label><input id="actualCash" type="number" min="0" step="0.01" value="0" oninput="renderClosingDifference()"></div><div><label>Short / Excess</label><input id="cashDifference" readonly value="₹0"></div></div>
+<label style="margin-top:8px">Closing Remark</label><input id="closingRemark" placeholder="Optional remark / reason for difference">
+<button class="btn" style="margin-top:10px" onclick="saveDayClosing()">Save Day Closing</button>
+<div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>Date</th><th>Expected Cash</th><th>Actual Cash</th><th>Short/Excess</th><th>Net Online</th><th>User</th><th>Saved At</th><th>Remark</th></tr></thead><tbody id="closingHistory"><tr><td colspan="8">No closing loaded</td></tr></tbody></table></div>
+</div></section><section id="customerStatement" class="page">
+ <div class="card">
+  <h2>Customer Statement</h2>
+  <div class="row"><div><label>Customer Code</label><input id="stmtCustomer" placeholder="Customer code"></div><div><label>From Date</label><input id="stmtFrom" type="date"></div><div><label>To Date</label><input id="stmtTo" type="date"></div></div>
+  <div class="row" style="margin-top:8px"><button class="btn" onclick="loadCustomerStatement()">Load Statement</button><button class="btn secondary" onclick="printCustomerStatement()">Print</button><button class="btn secondary" onclick="downloadCustomerStatement()">Download CSV</button></div>
+  <div id="stmtSummary" class="tiny" style="margin-top:10px">Select customer and date range.</div>
+  <div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Debit</th><th>Credit</th><th>Cash</th><th>Online/UPI</th><th>Running Balance</th><th>Note</th></tr></thead><tbody id="stmtRows"><tr><td colspan="9">Load statement</td></tr></tbody></table></div>
+ </div>
+</section>
+<section id="salesReturn" class="page"><div class="card"><h2>Sales Return / QR Return</h2><div id="returnBillContext" class="tiny" style="margin-bottom:8px">Open a bill from Bill History, or scan a sold QR directly.</div><label>Scan / Enter SOLD QR</label><div class="row"><input id="returnQr" placeholder="1219..."><button class="btn" onclick="lookupReturnQr()">Find Sold QR</button></div><div id="returnLookup" class="tiny" style="margin-top:8px">Sold QR details will appear here.</div><div class="row" style="margin-top:10px"><div><label>Return Reason</label><select id="returnReason"><option value="">Select reason</option><option>Wrong Item</option><option>Defective/Damaged</option><option>Customer Return</option><option>Other</option></select></div><div><label>Remarks</label><input id="returnNote" placeholder="Return details"></div></div><button class="btn red" style="margin-top:10px" onclick="confirmQrReturn()">Confirm Return & Customer Credit</button><div class="tiny" style="margin-top:8px">Return creates customer credit. Credit can be used against a future bill or refunded separately.</div>
+<hr><h3>Customer Credit / Return Money</h3>
+<div class="row"><div><label>Customer Code</label><input id="creditCustomer" placeholder="Customer code"></div><div><label>Available Credit</label><input id="availableCredit" readonly value="₹0"></div></div>
+<div class="row" style="margin-top:8px"><button class="btn secondary" onclick="loadCustomerCredit()">Check Credit</button></div>
+<div class="row" style="margin-top:10px"><div><label>Refund Cash</label><input id="refundCash" type="number" min="0" step="0.01" value="0"></div><div><label>Refund Online/UPI</label><input id="refundOnline" type="number" min="0" step="0.01" value="0"></div></div>
+<label style="margin-top:8px">Refund Reference / Note</label><input id="refundNote" placeholder="UPI ref / cash refund note">
+<button class="btn red" style="margin-top:10px" onclick="refundCustomerCredit()">Return Money</button></div></section><section id="stockQrAudit" class="page">
+ <div class="card">
+  <h2>Stock / QR Transaction Log</h2>
+  <div class="row"><div><label>From Date</label><input id="sqFrom" type="date"></div><div><label>To Date</label><input id="sqTo" type="date"></div></div>
+  <div class="row" style="margin-top:8px"><button class="btn" onclick="loadStockQrAudit()">Load Log</button></div>
+  <div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>Date/Time</th><th>Action</th><th>Bill</th><th>Item</th><th>Qty +/-</th><th>QR</th><th>User</th></tr></thead><tbody id="stockQrAuditRows"><tr><td colspan="7">Load transaction log</td></tr></tbody></table></div>
+ </div>
+</section>
+<section id="pricingAudit" class="page">
+ <div class="card">
+  <h2>Pricing & Override Audit</h2>
+  <div class="row"><div><label>From Date</label><input id="auditFrom" type="date"></div><div><label>To Date</label><input id="auditTo" type="date"></div></div>
+  <div class="row" style="margin-top:8px"><button class="btn" onclick="loadPricingAudit()">Load Audit</button></div>
+  <div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>Date/Time</th><th>Type</th><th>User</th><th>Item</th><th>Category/Bill</th><th>Old/System</th><th>New/Final</th><th>Reason</th></tr></thead><tbody id="pricingAuditRows"><tr><td colspan="8">Load audit report</td></tr></tbody></table></div>
+ </div>
+</section>
+<section id="users" class="page">
+ <div class="row">
+  <div class="card"><h2>User Creation / Edit</h2><input id="uId" type="hidden"><label>Username</label><input id="uUsername" autocomplete="off"><label>Name</label><input id="uName"><div class="row"><div><label>Role</label><select id="uRole"><option>ADMIN</option><option>POS</option></select></div><div><label>Active</label><select id="uActive"><option value="true">Yes</option><option value="false">No</option></select></div></div><label>Module Access</label>
+<div id="uPermissions" class="card" style="padding:9px;margin:4px 0 8px">
+ <div class="tiny" style="margin-bottom:6px">Tick only the modules this user can access. Admin always has full access.</div>
+ <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+  <label><input type="checkbox" data-user-perm="billing"> POS Billing</label>
+  <label><input type="checkbox" data-user-perm="dashboard"> Dashboard</label>
+  <label><input type="checkbox" data-user-perm="customer_report"> Customer Report</label>
+  <label><input type="checkbox" data-user-perm="qr"> QR Generate</label>
+  <label><input type="checkbox" data-user-perm="masters"> Masters</label>
+  <label><input type="checkbox" data-user-perm="history"> Bill History</label>
+  <label><input type="checkbox" data-user-perm="schemes"> Schemes</label>
+  <label><input type="checkbox" data-user-perm="bikeguru"> Bike Guru</label>
+  <label><input type="checkbox" data-user-perm="collections"> Collections</label>
+  <label><input type="checkbox" data-user-perm="users"> Users</label>
+ </div>
+</div><label>Password <span class="muted">(blank keeps existing password while editing)</span></label><input id="uPassword" type="password" autocomplete="new-password"><button class="btn" style="width:100%;margin-top:8px" onclick="saveUser()">Save User</button><button class="btn secondary" style="width:100%;margin-top:6px" onclick="clearUserForm()">New User</button></div>
+  <div class="card"><h2>Users</h2><div class="tablewrap"><table><thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Active</th><th>Action</th></tr></thead><tbody id="userRows"></tbody></table></div></div>
+ </div>
+</section>
+</main>
+
+
+<div id="bgPortal" class="loginOverlay" style="display:none;z-index:1001">
+ <div class="loginCard" style="max-height:92vh;overflow:auto">
+  <div id="bgPortalLogin">
+   <h2>Bike Guru Login</h2>
+   <label>Mobile Number</label><input id="bgpMobile" inputmode="numeric" maxlength="10" placeholder="10 digit mobile">
+   <label>PIN</label><input id="bgpPin" type="password" inputmode="numeric" maxlength="6" placeholder="4–6 digit PIN" onkeydown="if(event.key==='Enter')bikeGuruPortalLogin()">
+   <button class="btn green" style="width:100%;margin-top:10px" onclick="bikeGuruPortalLogin()">Login</button>
+   <div class="row" style="margin-top:9px"><button class="btn secondary" onclick="showBikeGuruRegistration()">New Registration</button><button class="btn secondary" onclick="showBikeGuruForgotPin()">Forgot PIN</button></div>
+   <button class="btn secondary" style="width:100%;margin-top:8px" onclick="closeBikeGuruPortal()">Back to POS Login</button>
+   <div id="bgpMsg" class="muted" style="margin-top:8px"></div>
+  </div>
+  <div id="bgPortalRegister" class="hidden">
+   <h2>Bike Guru Registration</h2>
+   <div class="row"><div><label>Type</label><select id="bgrType"><option value="MECHANIC">Mechanic</option><option value="RETAILER">Retailer</option></select></div><div><label>Mobile</label><input id="bgrMobile" inputmode="numeric" maxlength="10"></div></div>
+   <label>Name</label><input id="bgrName">
+   <label>Garage / Shop Name</label><input id="bgrGarage">
+   <div class="row"><div><label>PAN</label><input id="bgrPan"></div><div><label>UPI ID</label><input id="bgrUpi"></div></div>
+   <label>Address / Area</label><input id="bgrAddress">
+   <div class="row"><div><label>Create PIN</label><input id="bgrPin" type="password" inputmode="numeric" maxlength="6"></div><div><label>Confirm PIN</label><input id="bgrPin2" type="password" inputmode="numeric" maxlength="6"></div></div>
+   <button class="btn green" style="width:100%;margin-top:9px" onclick="bikeGuruSelfRegister()">Register</button>
+   <button class="btn secondary" style="width:100%;margin-top:7px" onclick="showBikeGuruPortal()">Back to Login</button>
+   <div id="bgrMsg" class="muted" style="margin-top:8px"></div>
+  </div>
+  <div id="bgPortalForgot" class="hidden">
+   <h2>Forgot PIN</h2><div class="muted">Enter registered mobile. Admin will verify and issue a temporary PIN.</div>
+   <label>Mobile Number</label><input id="bgfMobile" inputmode="numeric" maxlength="10">
+   <button class="btn" style="width:100%;margin-top:9px" onclick="bikeGuruForgotPin()">Send Reset Request</button>
+   <button class="btn secondary" style="width:100%;margin-top:7px" onclick="showBikeGuruPortal()">Back to Login</button>
+   <div id="bgfMsg" class="muted" style="margin-top:8px"></div>
+  </div>
+  <div id="bgPortalDash" class="hidden">
+   <div class="row"><div style="flex:1"><h2 style="margin-bottom:2px">Bike Guru</h2><div id="bgpWho" class="muted"></div><div id="bgpGarage" class="tiny"></div></div><button class="btn secondary" onclick="bikeGuruPortalLogout()">Logout</button></div>
+   <div class="grid" style="margin-top:10px">
+    <div class="card"><div class="tiny">Available Points</div><h1 id="bgpAvailable" style="margin:5px 0">0</h1></div>
+    <div class="card"><div class="tiny">Total Earned</div><h2 id="bgpTotal">0</h2><div class="tiny">Redeemed: <b id="bgpRedeemed">0</b></div></div>
+   </div>
+   <div id="bgpForcePin" class="card hidden"><h3>Set New PIN</h3><div class="muted">Temporary PIN se login hua hai. Naya PIN set kijiye.</div><div class="row"><input id="bgpNewPin" type="password" inputmode="numeric" maxlength="6" placeholder="New PIN"><input id="bgpNewPin2" type="password" inputmode="numeric" maxlength="6" placeholder="Confirm PIN"></div><button class="btn" onclick="bikeGuruChangePin()">Change PIN</button></div>
+   <div class="card"><h3>Scan Product QR</h3><div class="row"><input id="bgpQr" placeholder="1219... QR / serial"><button class="btn green" onclick="bikeGuruScanQr()">Add Points</button></div><button class="btn secondary" style="width:100%;margin-top:7px" onclick="startBikeGuruCamera()">Open Camera Scanner</button><div id="bgpCamera" style="margin-top:8px"></div><div id="bgpScanMsg" class="muted" style="margin-top:6px"></div></div>
+   <div class="card"><h3>Redeem Points</h3><div class="row"><input id="bgpRedeemPoints" type="number" min="1" step="1" placeholder="Points"><button class="btn" onclick="bikeGuruRedeem()">Request Redeem</button></div><div class="tiny">Payment will use your registered UPI ID after approval.</div></div>
+   <div class="card"><h3>ABS Updates</h3><div id="bgpPromoHero"></div><div id="bgpMarketingFeed" class="grid" style="margin-top:8px"></div></div>
+   <div class="card"><h3>Recent Scan History</h3><div class="tablewrap"><table><thead><tr><th>Date</th><th>Item</th><th>QR</th><th>Points</th></tr></thead><tbody id="bgpScans"><tr><td colspan="4">No scans</td></tr></tbody></table></div></div>
+   <div class="card"><h3>Redemption History</h3><div id="bgpRedemptions" class="tiny">Loading…</div></div>
+   <div class="card"><h3>My Profile</h3><div class="row"><div><label>Mobile</label><input id="bgpProfileMobile" readonly></div><div><label>Type</label><input id="bgpProfileType" readonly></div></div><label>Name</label><input id="bgpProfileName" readonly><label>Garage / Shop</label><input id="bgpProfileGarage"><div class="row"><div><label>PAN</label><input id="bgpProfilePan"></div><div><label>UPI ID</label><input id="bgpProfileUpi"></div></div><label>Address / Area</label><input id="bgpProfileAddress"><button class="btn secondary" onclick="bikeGuruSaveProfile()">Save Profile</button><div class="divider"></div><div class="row"><input id="bgpChangePin" type="password" inputmode="numeric" maxlength="6" placeholder="New PIN"><input id="bgpChangePin2" type="password" inputmode="numeric" maxlength="6" placeholder="Confirm PIN"><button class="btn secondary" onclick="bikeGuruProfileChangePin()">Change PIN</button></div></div>
+  </div>
+ </div>
+</div>
+<div id="loginOverlay" class="loginOverlay"><div class="loginCard"><h2>ABS POS Login</h2><label>Username</label><input id="loginUsername" autocomplete="username"><label>Password</label><input id="loginPassword" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginUser()"><button class="btn" style="width:100%;margin-top:10px" onclick="loginUser()">Login</button><button class="btn green" style="width:100%;margin-top:8px" onclick="showBikeGuruPortal()">Bike Guru / Retailer Login</button><div class="divider"></div><div class="muted">First installation only: if no POS user exists, create the first Admin below.</div><label>Admin Name</label><input id="bootName" placeholder="Owner / Admin name"><button class="btn secondary" style="width:100%;margin-top:7px" onclick="bootstrapAdmin()">Create First Admin Using Above Username/Password</button><div id="loginMsg" class="muted" style="margin-top:8px"></div></div></div>
+<div id="historyModal" class="modal"><div class="modalbox"><div class="row"><h2 id="historyModalTitle">Customer History</h2><button class="btn gray" onclick="closeHistoryModal()">Close</button></div><div class="card" style="margin-bottom:10px"><div class="row"><div><div class="muted">Current Outstanding</div><div class="total" id="ledgerBalance" style="text-align:left">₹0</div></div><div><label>Cash Received</label><input id="ledgerCashAmount" type="number" min="0" step="0.01" value="0" oninput="syncLedgerPayment()"></div><div><label>Online / UPI Received</label><input id="ledgerOnlineAmount" type="number" min="0" step="0.01" value="0" oninput="syncLedgerPayment()"></div></div><input id="ledgerPayAmount" type="hidden" value="0"><div class="tiny">Total Receipt: <b id="ledgerPayTotal">₹0</b></div><div class="row"><input id="ledgerPayRef" placeholder="Receipt / UTR reference (optional)"><button class="btn green" onclick="recordCustomerPayment()">Save Balance Payment</button><div class="tiny">Receipt reduces outstanding and appears separately in Collection Report.</div></div></div><h3>Bills</h3><div class="tablewrap"><table><thead><tr><th>Bill</th><th>Date</th><th>Bill Amount</th><th>Paid</th><th>Balance</th><th>Status</th><th></th></tr></thead><tbody id="customerHistoryRows"></tbody></table></div><h3 style="margin-top:12px">Ledger</h3><div class="tablewrap"><table><thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Debit</th><th>Credit</th><th>Running Balance</th></tr></thead><tbody id="customerLedgerRows"></tbody></table></div></div></div>
+<div id="pdfModal" class="modal"><div class="modalbox" style="max-width:900px"><div class="row"><h2>Bill PDF Preview</h2><button class="btn gray" onclick="closePdfModal()">Close</button></div><iframe id="pdfFrame" style="width:100%;height:70vh;border:1px solid #ddd;border-radius:8px"></iframe><a id="pdfDownload" class="btn green" style="display:inline-block;margin-top:8px;text-decoration:none" download>Download PDF</a></div></div>
+<div id="receiptPrint"></div>
+<div id="globalActionDialog" role="dialog" aria-modal="true" aria-labelledby="globalActionDialogTitle">
+ <div class="gadbox">
+  <div id="globalActionDialogIcon" class="gadicon">✓</div>
+  <div id="globalActionDialogTitle" class="gadtitle">Action Completed</div>
+  <div id="globalActionDialogMessage" class="gadmsg"></div>
+  <button id="globalActionDialogOk" class="btn gadok" type="button">OK</button>
+ </div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+// V9.9: successful/error action acknowledgements block further interaction until OK.
+let globalActionDialogOpen=false,globalActionDialogResolver=null;
+function actionDialog(message,title='Action Completed',kind='success'){
+ const dlg=$('globalActionDialog'); if(!dlg){alert(message);return Promise.resolve()}
+ globalActionDialogOpen=true; document.body.classList.add('action-dialog-open');
+ $('globalActionDialogTitle').textContent=title;
+ $('globalActionDialogMessage').textContent=String(message||'Completed successfully');
+ $('globalActionDialogIcon').textContent=kind==='error'?'!':'✓';
+ dlg.classList.add('show');
+ setTimeout(()=>$('globalActionDialogOk')?.focus(),20);
+ return new Promise(resolve=>{globalActionDialogResolver=resolve})
+}
+function closeActionDialog(){
+ const dlg=$('globalActionDialog'); if(!dlg)return;
+ dlg.classList.remove('show');document.body.classList.remove('action-dialog-open');globalActionDialogOpen=false;
+ let r=globalActionDialogResolver;globalActionDialogResolver=null;if(r)r();
+}
+document.addEventListener('click',e=>{
+ if(globalActionDialogOpen && e.target?.id!=='globalActionDialogOk'){e.preventDefault();e.stopImmediatePropagation()}
+},true);
+document.addEventListener('keydown',e=>{
+ if(!globalActionDialogOpen)return;
+ if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();closeActionDialog()}
+ else {e.preventDefault();e.stopImmediatePropagation()}
+},true);
+document.addEventListener('DOMContentLoaded',()=>{
+ let ok=$('globalActionDialogOk');if(ok)ok.onclick=closeActionDialog;
+});
+
+// Existing code uses toast() widely. Convert completed/error outcomes to blocking acknowledgement;
+// informational "Saving/Loading/Scanning..." messages remain non-blocking.
+function shouldBlockToast(msg){
+ let x=String(msg||'').toLowerCase();
+ if(!x)return false;
+ if(/\b(saving|loading|scanning|opening|checking|please wait)\b/.test(x))return false;
+ return /\b(saved|success|successful|updated|created|added|deleted|removed|generated|published|hidden|approved|rejected|settled|credited|returned|completed|failed|error|invalid|required|not found|cannot|already|denied|expired|mismatch|exceed)\b/.test(x);
+}
+
+const SUPABASE_URL='https://zdwsjzaslxjqrltijdfh.supabase.co';
+const SUPABASE_KEY='sb_publishable_JEoDRoS-eSr3pRgy8XopJw_yu5S8iRM';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const LOCAL='abs_pos_v23_cache';
+const SESSION_KEY='abs_pos_session';
+let db={items:[],customers:[],pricing:[],balances:{},qrs:[],bills:[],schemes:[],bikeGuru:[],companyProfile:null};
+let schemeReportData=[];
+let cart=[],lastGenerated=[],openedBill=null,remoteOK=false,currentUser=null,sessionToken=localStorage.getItem(SESSION_KEY)||'',lineOverrides={};
+
+const $=id=>document.getElementById(id);
+const money=n=>'₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2});
+function legacyToast(t){let e=$('toast');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',2200)}
+function toast(msg){
+ legacyToast(msg);
+ if(shouldBlockToast(msg) && !globalActionDialogOpen){
+   let err=/failed|error|invalid|required|not found|cannot|already|denied|expired|mismatch|exceed/i.test(String(msg||''));
+   actionDialog(msg,err?'Action Not Completed':'Action Completed',err?'error':'success');
+ }
+}
+
+function cache(){/* V8.6 Supabase-only: no business data stored in browser */}
+function secureHex(bytes=24){const a=new Uint8Array(bytes);crypto.getRandomValues(a);return Array.from(a).map(b=>b.toString(16).padStart(2,'0')).join('').toUpperCase()}
+function uniqueToken(){return '1219-'+secureHex(24)}
+function uniqueSerial(){const a=new Uint32Array(2);crypto.getRandomValues(a);const n=((BigInt(a[0])<<32n)|BigInt(a[1]))%10000000000n;return '1219'+n.toString().padStart(10,'0')}
+function qrAlreadyInCart(token){return cart.some(x=>Array.isArray(x.tokens)&&x.tokens.includes(token))}
+function localDate(){return new Date().toISOString().slice(0,10)}
+function permissionForPage(id){return ({billing:'billing',dashboard:'dashboard',customerReport:'customer_report',qr:'qr',masters:'masters',history:'history',salesReturn:'history',schemes:'schemes',bikeguru:'bikeguru',collections:'collections',users:'users'})[id]||id}
+function hasPermission(key){return currentUser?.role==='ADMIN'||(currentUser?.permissions||[]).includes(key)}
+function showPage(id,btn){if(!currentUser)return;currentUser.role=String(currentUser.role||'').toUpperCase();let key=permissionForPage(id);if(!hasPermission(key)){toast('Access not allowed');return}document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));$(id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');renderAll()}
+function customerMode(m){$('existingBox').style.display=m==='existing'?'block':'none';$('newBox').style.display=m==='new'?'block':'none';$('existingBtn').classList.toggle('on',m==='existing');$('newBtn').classList.toggle('on',m==='new')}
+function currentCustomer(){return db.customers.find(c=>c.code===$('posCustomer').value)||null}
+function currentCategory(){return currentCustomer()?.category||'D'}
+function pricingFor(itemCode,cat){
+ let code=String(itemCode||'').trim().toUpperCase(),category=String(cat||'D').trim().toUpperCase();
+ return db.pricing.find(p=>String(p.itemCode||'').trim().toUpperCase()===code&&String(p.category||'D').trim().toUpperCase()===category)||null
+}
+function systemRate(item,cat){
+ let p=pricingFor(item.code,cat),type=String(item.pricingType||'DISCOUNT').trim().toUpperCase();
+ // DISCOUNT item: MRP × Item/Customer-Category discount is authoritative.
+ // A blank Base Price must never prevent category discount pricing.
+ if(type==='DISCOUNT'){
+   if(p&&+p.rate>0)return +p.rate;
+   if(p&&+item.mrp>0)return +(item.mrp*(1-(+p.discount||0)/100)).toFixed(2);
+   return null
+ }
+ // NET PRICE item: Base Price first, then category selling rate.
+ if(+item.basePrice>0)return +item.basePrice;
+ if(p&&+p.rate>0)return +p.rate;
+ return null
+}
+function rate(item,cat,key=''){let o=lineOverrides[key];return o?+o.rate:systemRate(item,cat)}
+function discountFor(item,cat,key=''){
+ let o=lineOverrides[key];if(o)return item.mrp>0?+((1-o.rate/item.mrp)*100).toFixed(2):0;
+ let type=String(item.pricingType||'DISCOUNT').trim().toUpperCase(),p=pricingFor(item.code,cat);
+ if(type==='DISCOUNT'){
+   if(p&&+p.rate>0)return item.mrp>0?+((1-(+p.rate/item.mrp))*100).toFixed(2):+(p.discount||0);
+   return p?+(p.discount||0):0
+ }
+ return 0
+}
+function customerBalance(code){return +(db.balances[code]||0)}
+function nextLocalBillNo(){let d=localDate().replaceAll('-',''),n=db.bills.filter(b=>(b.bill_no||b.bill||'').includes(d)).length+1;return `POS-${d}-${String(n).padStart(4,'0')}`}
+
+async function fetchAllBillsRemote(){let all=[];for(let from=0;;from+=1000){let r=await sb.from('pos_bills').select('*,pos_bill_lines(*)').order('created_at',{ascending:false}).range(from,from+999);if(r.error)return r;all.push(...(r.data||[]));if((r.data||[]).length<1000)break}return {data:all,error:null}}
+
+async function loadRemote(){
+ try{
+  let [it,cu,qr,bi,px,br,pr,cp]=await Promise.all([
+   sb.from('pos_items').select('*').order('item_code'),
+   sb.from('pos_customers').select('*').order('customer_code'),
+   sb.from('pos_qr_registry').select('*').order('created_at',{ascending:false}).limit(5000),
+   fetchAllBillsRemote(),
+   sb.from('pos_item_category_pricing').select('*').order('item_code'),
+   sb.from('pos_brand_master').select('*').eq('active',true).order('brand_name'),
+   sb.from('pos_product_master').select('*').eq('active',true).order('product_name'),
+   sb.from('pos_company_profile').select('*').eq('id',1).maybeSingle()
+  ]);
+  for(let r of [it,cu,qr,bi,px,br,pr,cp])if(r.error)throw r.error;
+  db.companyProfile=cp.data||null;
+  db.brands=(br.data||[]).map(x=>String(x.brand_name||'').toUpperCase());db.products=(pr.data||[]).map(x=>String(x.product_name||'').toUpperCase());
+  db.items=it.data.map(x=>({code:x.item_code,name:x.item_name,brand:String(x.brand||'').toUpperCase(),product:String(x.product||'').toUpperCase(),standardPacking:Math.max(1,parseInt(x.standard_packing)||1),mrp:+x.mrp,basePrice:+x.base_price,pricingType:x.pricing_type||'DISCOUNT',schemeExcluded:!!x.scheme_excluded}));
+  db.customers=cu.data.map(x=>({code:x.customer_code,name:x.customer_name,mobile:x.mobile||'',address:x.address||'',area:x.area||'',category:String(x.category||'D').trim().toUpperCase(),gstin:x.gstin||'',remark:x.remark||''}));
+  db.qrs=qr.data.map(x=>({token:x.token,serial:x.serial_no,itemCode:x.item_code,batch:x.batch_no,packedDate:x.packed_date,status:x.status,packQty:Math.max(1,parseInt(x.pack_qty)||1),remainingQty:Math.max(0,Number(x.remaining_qty??x.pack_qty??1)),sold:x.status==='SOLD',saleBill:x.sale_bill_no}));
+  db.bills=bi.data.map(x=>({bill:x.bill_no,at:x.bill_date,customerCode:x.customer_code||'',customerName:x.customer_name,customerMobile:x.customer_mobile||'',category:x.customer_category||'D',paymentMethod:x.payment_method,paidAmount:+x.paid_amount,total:+x.total_amount,balanceAmount:+x.balance_amount||0,creditUsed:+x.credit_used||0,status:x.status||'ACTIVE',cancelReason:x.cancel_reason||'',lines:(x.pos_bill_lines||[]).map(l=>({itemCode:l.item_code,name:l.item_name,mrp:+l.mrp,qty:+l.qty,rate:+l.rate,discount:+l.discount_pct,amount:+l.amount,source:l.entry_source,tokens:l.qr_tokens||[]}))}));
+  db.pricing=px.data.map(x=>({itemCode:x.item_code,category:String(x.customer_category||'D').trim().toUpperCase(),discount:+x.discount_pct,rate:+x.selling_rate}));
+  remoteOK=true;$('dbState').textContent='Supabase connected';
+  try{await loadBalances()}catch(e){console.warn('balance optional',e)}
+  let sc=await sb.from('pos_schemes').select('*').order('from_date',{ascending:false});if(!sc.error)db.schemes=sc.data||[];
+  let bg=await sb.from('bike_guru_members').select('*').order('created_at',{ascending:false});if(!bg.error)db.bikeGuru=bg.data||[];
+  cache();renderAll();if(currentUser?.role==='ADMIN')loadUsers();
+ }catch(e){
+  console.error('Supabase core load:',e);
+  remoteOK=false;$('dbState').textContent='Supabase error';
+  db={items:[],customers:[],pricing:[],balances:{},qrs:[],bills:[],schemes:[],bikeGuru:[],brands:[],products:[]};renderAll(); toast('Supabase connection error — local business cache disabled');
+ }
+}
+
+function normSearch(v){return String(v??'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim()}
+function fuzzySubsequence(q,t){let j=0;for(let i=0;i<t.length&&j<q.length;i++)if(t[i]===q[j])j++;return j===q.length}
+function smartMatch(query,...values){
+ let q=normSearch(query);if(!q)return true;let t=normSearch(values.join(' '));if(t.includes(q))return true;
+ let qs=q.split(/\s+/).filter(Boolean),ts=t.split(/\s+/);if(qs.every(x=>ts.some(w=>w.startsWith(x)||w.includes(x))))return true;
+ let compactQ=q.replace(/\s/g,''),compactT=t.replace(/\s/g,'');return compactQ.length>=3&&fuzzySubsequence(compactQ,compactT)
+}
+function filterMasterItems(q=''){
+ let el=$('masterItemSelect');if(!el)return;let old=el.value,list=db.items.filter(i=>smartMatch(q,i.code,i.name,i.brand,i.product));
+ el.innerHTML='<option value="">New Item</option>'+list.slice(0,100).map(i=>`<option value="${i.code}">${i.code} — ${i.name}</option>`).join('');
+ if([...el.options].some(o=>o.value===old))el.value=old; else if(list.length===1)el.value=list[0].code;
+}
+function filterMasterCustomers(q=''){
+ let el=$('masterCustomerSelect');if(!el)return;let old=el.value,list=db.customers.filter(c=>smartMatch(q,c.code,c.name,c.mobile,c.area,c.address));
+ el.innerHTML='<option value="">New Customer</option>'+list.slice(0,100).map(c=>`<option value="${c.code}">${c.code} — ${c.name}${c.mobile?' • '+c.mobile:''}</option>`).join('');
+ if([...el.options].some(o=>o.value===old))el.value=old; else if(list.length===1)el.value=list[0].code;
+}
+function renderMasterTables(){
+ if($('itemRows')){let q=$('itemMasterTableSearch')?.value||'',a=db.items.filter(i=>smartMatch(q,i.code,i.name,i.brand,i.product));$('itemRows').innerHTML=a.map(i=>`<tr><td><span class="clicklink" onclick="editItemByCode('${i.code}')">${i.code}</span></td><td>${i.name}</td><td>${i.brand||''}</td><td>${i.standardPacking||1}</td><td>${money(i.mrp)}</td><td>${money(i.basePrice)}</td><td>${i.pricingType}</td><td>${i.schemeExcluded?'Excluded':'Eligible'}</td></tr>`).join('')||'<tr><td colspan="8">No matching items</td></tr>'}
+ if($('customerRows')){let q=$('customerMasterTableSearch')?.value||'',a=db.customers.filter(c=>smartMatch(q,c.code,c.name,c.mobile,c.address,c.area,c.category));$('customerRows').innerHTML=a.map(c=>`<tr><td>${c.code}</td><td>${c.name}</td><td>${c.mobile}</td><td>${c.address||''}</td><td>${c.category}</td><td>${c.area}</td></tr>`).join('')||'<tr><td colspan="6">No matching customers</td></tr>'}
+ if($('pricingRows')){
+ let q=$('pricingSearch')?.value||'';
+ let items=db.items.filter(i=>smartMatch(q,i.code,i.name,i.brand,i.product)||db.pricing.some(p=>p.itemCode===i.code&&smartMatch(q,p.category)));
+ function cell(i,cat){let p=pricingFor(i.code,cat);if(!p)return `<span class="muted">Not Set</span>`;return `<button type="button" class="btn secondary" style="padding:5px 8px" onclick="editPricingCell('${i.code}','${cat}')">${Number(p.discount||0).toFixed(2)}%<br><span class="tiny">${money(p.rate||0)}</span></button>`}
+ $('pricingRows').innerHTML=items.map(i=>`<tr><td><b>${i.code}</b><br><span class="tiny">${i.name||''}</span></td><td>${money(i.mrp||0)}</td><td>${cell(i,'A')}</td><td>${cell(i,'B')}</td><td>${cell(i,'C')}</td><td>${cell(i,'D')}</td></tr>`).join('')||'<tr><td colspan="6">No matching items</td></tr>'
+}
+}
+let autoSearchTimers={};
+function debounceRun(key,fn,ms=250){clearTimeout(autoSearchTimers[key]);autoSearchTimers[key]=setTimeout(fn,ms)}
+function debouncedBillSearch(){debounceRun('bill',()=>searchBillsAdvanced(),250)}
+function debouncedCustomerSalesReport(){debounceRun('cr',()=>loadCustomerSalesReport(),250)}
+function populateCustomerSelect(filter='') {
+ let el=$('posCustomer'); if(!el)return; let old=el.value; let q=String(filter||'').trim().toLowerCase();
+ let list=db.customers.filter(c=>smartMatch(q,c.code,c.name,c.mobile,c.area,c.address));
+ el.innerHTML='<option value="">Walk-in / Select Existing</option>'+list.map(c=>`<option value="${c.code}">${c.code} — ${c.name}${c.mobile?' • '+c.mobile:''}</option>`).join('');
+ if([...el.options].some(o=>o.value===old))el.value=old;
+}
+function renderAll(){renderCompanyProfile();renderBrandProductMasters();
+ populateCustomerSelect($('posCustomerSearch')?.value||'');
+ let itemOpts='<option value="">Select Item Code</option>'+db.items.map(i=>`<option value="${i.code}">${i.code} — ${i.name}</option>`).join('');
+ if($('qrItemCode'))$('qrItemCode').innerHTML=itemOpts;
+ if($('itemCodeList'))$('itemCodeList').innerHTML=db.items.map(i=>`<option value="${i.code}">${i.name}</option>`).join('');
+ filterMasterItems($('masterItemSearch')?.value||'');
+ filterMasterCustomers($('masterCustomerSearch')?.value||'');
+ renderMasterTables();
+ $('currentBillNo').textContent='Next bill number will be assigned on Save';
+ if($('billSearch')){let old=$('billSearch').value;$('billSearch').innerHTML='<option value="">Select saved bill no.</option>'+db.bills.map(b=>`<option value="${b.bill}">${b.bill} — ${new Date(b.at).toLocaleDateString()}</option>`).join('');if([...$('billSearch').options].some(o=>o.value===old))$('billSearch').value=old;}
+ renderBill();updateBillAmountSummary();renderHistory();renderSavedBillDateList();renderSchemeOptions();renderBikeGuruMembers();
+}
+function syncBillPayment(){
+ let c=Math.max(0,+$('billCashAmount').value||0),o=Math.max(0,+$('billOnlineAmount').value||0),t=+(c+o).toFixed(2);
+ $('paidAmount').value=t;$('billPaidTotal').textContent=money(t);
+ let pm=$('paymentMethod');if(t>0)pm.value=c>0&&o>0?'MIXED':c>0?'CASH':'ONLINE/UPI';
+ renderBill();updateBillAmountSummary();
+}
+function billPaymentSplit(){let c=Math.max(0,+$('billCashAmount').value||0),o=Math.max(0,+$('billOnlineAmount').value||0);return {cash:c,online:o,total:+(c+o).toFixed(2),method:c>0&&o>0?'MIXED':c>0?'CASH':o>0?'ONLINE/UPI':'CREDIT'}}
+function syncLedgerPayment(){let c=Math.max(0,+$('ledgerCashAmount').value||0),o=Math.max(0,+$('ledgerOnlineAmount').value||0),t=+(c+o).toFixed(2);$('ledgerPayAmount').value=t;$('ledgerPayTotal').textContent=money(t)}
+let cameraScanner=null,cameraBusy=false;
+async function startCameraScan(){
+ if(cameraScanner||cameraBusy)return;if(!window.isSecureContext){toast('Camera needs HTTPS');return}
+ if(typeof Html5Qrcode==='undefined'){toast('Camera scanner library not loaded');return}
+ cameraBusy=true;$('cameraReader').classList.remove('hidden');$('cameraStartBtn').classList.add('hidden');$('cameraStopBtn').classList.remove('hidden');
+ try{cameraScanner=new Html5Qrcode('cameraReader');await cameraScanner.start({facingMode:'environment'},{fps:10,qrbox:{width:220,height:220}},async text=>{if(!text)return;$('scanNo').value=String(text).trim();await stopCameraScan();scanAdd()},()=>{});$('cameraStatus').textContent='Camera ready';}
+ catch(e){cameraScanner=null;$('cameraReader').classList.add('hidden');$('cameraStartBtn').classList.remove('hidden');$('cameraStopBtn').classList.add('hidden');$('cameraStatus').textContent='Allow camera permission and retry';toast('Camera could not open')}
+ finally{cameraBusy=false}
+}
+async function stopCameraScan(){let x=cameraScanner;cameraScanner=null;try{if(x){try{await x.stop()}catch(e){}try{await x.clear()}catch(e){}}}finally{$('cameraReader').classList.add('hidden');$('cameraStartBtn').classList.remove('hidden');$('cameraStopBtn').classList.add('hidden')}}
+async function loadCollectionReport(){
+ if(currentUser?.role!=='ADMIN'){toast('Admin only');return}
+ let f=$('collectionFrom').value,t=$('collectionTo').value;
+ if(!f||!t){toast('Select From and To date');return}
+ if(t<f){toast('To Date cannot be before From Date');return}
+ $('collectionStatus').textContent='Loading collection…';
+
+ // Single source of truth: server report over persisted payment splits.
+ let q=await sb.rpc('pos_collection_report',{p_token:sessionToken,p_from_date:f,p_to_date:t});
+ if(q.error){
+  $('collectionStatus').textContent='Collection load failed';
+  toast('Collection report failed: '+q.error.message);
+  return
+ }
+ let rows=(q.data||[]).map(x=>({
+  received_at:x.received_at,
+  customer_code:x.customer_code||'Walk-in',
+  reference_no:x.reference_no||'',
+  source:String(x.source||'').toUpperCase(),
+  cash_amount:+x.cash_amount||0,
+  online_amount:+x.online_amount||0
+ }));
+ let cash=rows.reduce((a,x)=>a+x.cash_amount,0),
+     online=rows.reduce((a,x)=>a+x.online_amount,0),
+     bill=rows.filter(x=>x.source==='BILL').reduce((a,x)=>a+x.cash_amount+x.online_amount,0),
+     receipt=rows.filter(x=>x.source==='RECEIPT').reduce((a,x)=>a+x.cash_amount+x.online_amount,0);
+
+ $('collectionCash').textContent=money(cash);
+ $('collectionOnline').textContent=money(online);
+ $('collectionTotal').textContent=money(cash+online);
+ if($('collectionBillTotal'))$('collectionBillTotal').textContent=money(bill);
+ if($('collectionReceiptTotal'))$('collectionReceiptTotal').textContent=money(receipt);
+ $('collectionRows').innerHTML=rows.map(x=>`<tr>
+   <td>${new Date(x.received_at).toLocaleString()}</td>
+   <td>${x.customer_code}</td>
+   <td>${x.reference_no}</td>
+   <td>${x.source==='RECEIPT'?'<b>Balance Receipt</b>':'Bill Payment'}</td>
+   <td>${money(x.cash_amount)}</td>
+   <td>${money(x.online_amount)}</td>
+   <td><b>${money(x.cash_amount+x.online_amount)}</b></td>
+  </tr>`).join('')||'<tr><td colspan="7">No collection in selected period</td></tr>';
+ $('collectionStatus').textContent=`${rows.length} receipt/payment entr${rows.length===1?'y':'ies'} • Bill ${money(bill)} • Balance Receipt ${money(receipt)}`;
+}
+function updateBillAmountSummary(){let total=0;try{let groups={};cart.forEach(x=>{let k=x.itemCode+'|'+x.source;if(!groups[k])groups[k]={key:k,itemCode:x.itemCode,qty:0};groups[k].qty+=x.qty||1});Object.values(groups).forEach(g=>{let i=db.items.find(x=>x.code===g.itemCode);if(i){let r=rate(i,currentCategory(),g.key);if(r!==null)total+=r*g.qty}})}catch(e){}let paid=Math.max(0,+($('paidAmount')?.value||0)),bal=Math.max(0,total-paid);if($('summaryBillAmount'))$('summaryBillAmount').textContent=money(total);if($('summaryPaidAmount'))$('summaryPaidAmount').textContent=money(paid);if($('summaryBalanceAmount'))$('summaryBalanceAmount').textContent=money(bal)}
+function getBillAdjustment(subtotal){
+ let raw=Math.max(0,Number($('billDiscount')?.value||0)),type=$('billDiscountType')?.value||'AMOUNT';
+ let discount=type==='PERCENT'?subtotal*Math.min(raw,100)/100:Math.min(raw,subtotal);
+ discount=Math.round(discount*100)/100;
+ let after=Math.max(0,subtotal-discount),final=Math.round(after),roundOff=Math.round((final-after)*100)/100;
+ return {discount,after,roundOff,final,type,input:raw,reason:$('billDiscountReason')?.value.trim()||''};
+}
+function renderBill(){
+ let c=currentCustomer(),prev=c?customerBalance(c.code):0;$('custInfo').innerHTML=c?`${c.mobile||'No mobile'} • Category ${c.category} • ${c.area||''}${c.address?' • '+c.address:''}<br><b>Outstanding: ${money(prev)}</b>`:'Walk-in • Category D';if($('custHistoryBtn'))$('custHistoryBtn').classList.toggle('hidden',!c);
+ let cat=currentCategory(),groups={};
+ cart.forEach(x=>{let k=x.itemCode+'|'+x.source;if(!groups[k])groups[k]={key:k,itemCode:x.itemCode,qty:0,tokens:[],qrAllocations:[],source:x.source};groups[k].qty+=x.qty||1;if(x.token){groups[k].tokens.push(x.token);groups[k].qrAllocations.push({token:x.token,qty:Number(x.qty||1)})}});
+ let total=0,missing=[];
+ $('billRows').innerHTML=Object.values(groups).map(g=>{let i=db.items.find(x=>x.code===g.itemCode);if(!i)return'';let r=rate(i,cat,g.key),d=discountFor(i,cat,g.key),ov=lineOverrides[g.key];if(r===null){missing.push(i.code);return `<tr><td><b>${i.name}</b><div class="tiny">${i.code} • ${g.source}</div></td><td>${money(i.mrp)}</td><td>${g.source==='QR'?`<b>${g.qty}</b><div class="tiny">QR partial/full pack</div>`:`<div class="row" style="gap:4px;align-items:center"><button class="btn secondary" onclick="changeLineQty('${g.key}',-1)">−</button><input style="width:58px" type="number" min="1" step="1" value="${g.qty}" onchange="setLineQty('${g.key}',this.value)"><button class="btn secondary" onclick="changeLineQty('${g.key}',1)">+</button></div>`}</td><td><b>NO PRICE</b></td><td>-</td><td>-</td><td>${currentUser?`<button class="btn secondary" onclick="overrideLinePrice('${g.key}')">Set Price</button>`:''} <button class="btn red" onclick="removeLine('${g.itemCode}','${g.source}')">−</button></td></tr>`}let a=r*g.qty;total+=a;return `<tr><td><b>${i.name}</b><div class="tiny">${i.code} • ${g.source}${g.tokens.length?' • '+g.tokens.length+' traced':''}${ov?' • OVERRIDE: '+ov.reason:''}</div></td><td>${money(i.mrp)}</td><td>${g.source==='QR'?`<b>${g.qty}</b><div class="tiny">QR partial/full pack</div>`:`<div class="row" style="gap:4px;align-items:center"><button class="btn secondary" onclick="changeLineQty('${g.key}',-1)">−</button><input style="width:58px" type="number" min="1" step="1" value="${g.qty}" onchange="setLineQty('${g.key}',this.value)"><button class="btn secondary" onclick="changeLineQty('${g.key}',1)">+</button></div>`}</td><td>${money(r)}${ov?'<div class="tiny">System '+money(ov.systemRate)+'</div>':''}</td><td>${d}%</td><td><b>${money(a)}</b></td><td>${currentUser?`<button class="btn secondary" onclick="overrideLinePrice('${g.key}')">Price Override</button>`:''} <button class="btn red" onclick="removeLine('${g.itemCode}','${g.source}')">−</button></td></tr>`}).join('')||'<tr><td colspan="7" class="muted">Scan barcode/QR or enter Item Code + Qty.</td></tr>';
+ let paid=Math.max(0,+$('paidAmount').value||0),current=Math.max(0,total-paid),after=Math.max(0,prev+total-paid);
+ $('billTotal').textContent=money(total);$('previousOutstanding').textContent=money(prev);$('currentBillBalance').textContent=money(current);$('totalOutstanding').textContent=money(after);$('billTotal').dataset.missing=missing.join(',');
+
+ // V6.6 final bill adjustment display
+ try{
+   let base=Number($('billTotal')?.textContent?.replace(/[₹,\s]/g,'')||$('billTotal')?.value||0),a=getBillAdjustment(base);
+   if($('billRoundOff'))$('billRoundOff').value=money(a.roundOff);
+   if($('finalNetBill'))$('finalNetBill').value=money(a.final);
+ }catch(e){}
+}
+function lineGroup(key){let [code,source]=key.split('|');return cart.filter(x=>x.itemCode===code&&x.source===source)}
+function setLineQty(key,value){
+ let [code,source]=key.split('|'),q=Math.floor(Number(value));
+ if(source==='QR'){toast('QR item quantity is locked to scanned QR');renderBill();return}
+ if(!Number.isFinite(q)||q<1){toast('Quantity must be at least 1');renderBill();return}
+ let rows=lineGroup(key),cur=rows.reduce((a,x)=>a+Number(x.qty||1),0);
+ if(rows.length===0)return;
+ rows[0].qty=q;for(let n=1;n<rows.length;n++){let ix=cart.indexOf(rows[n]);if(ix>=0)cart.splice(ix,1)}
+ renderBill();
+}
+function changeLineQty(key,delta){
+ let rows=lineGroup(key);if(!rows.length)return;
+ if(rows[0].source==='QR'){toast('QR item quantity is locked');return}
+ let q=rows.reduce((a,x)=>a+Number(x.qty||1),0)+delta;if(q<1){toast('Use Remove to delete item');return}setLineQty(key,q);
+}
+function removeLine(code,source){
+ if(!confirm(`Remove ${code} from bill?`))return;
+ cart=cart.filter(x=>!(x.itemCode===code&&x.source===source));
+ delete lineOverrides[code+'|'+source];renderBill();
+}
+function clearBill(){if($('fullyCredit'))$('fullyCredit').checked=false;cart=[];lineOverrides={};$('paidAmount').value='';renderBill()}
+function overrideLinePrice(key){
+ if(!currentUser){toast('Login required');return}
+ let [code]=key.split('|'),i=db.items.find(x=>x.code===code);if(!i)return;
+ let sys=systemRate(i,currentCategory());if(sys===null)sys=0;
+ let v=prompt(`Price Override — final selling rate for ${code}`,lineOverrides[key]?.rate??sys);if(v===null)return;
+ let rr=Number(v);if(!(rr>=0)){toast('Invalid rate');return}
+ let reason=prompt('Override reason (required): Customer Negotiation / Defective-Damaged / Clearance-Old Stock / Other',lineOverrides[key]?.reason||'Customer Negotiation');
+ if(!String(reason||'').trim()){toast('Override reason required');return}
+ lineOverrides[key]={rate:rr,systemRate:sys,reason:String(reason).trim(),by:currentUser?.username||currentUser?.name||'',userId:currentUser?.id||'',userName:currentUser?.name||currentUser?.username||'',at:new Date().toISOString()};renderBill()
+}
+
+async function saveNewCustomer(){
+ if(!remoteOK){toast('Supabase connection required');return}
+ let name=$('newName').value.trim(),mobile=$('newMobile').value.trim(),category=$('newCategory').value,area=$('newArea').value.trim(),address=$('newAddress').value.trim();
+ if(!name){toast('Customer name required');return}
+ if(mobile){let md=mobile.replace(/\D/g,'').slice(-10),existing=db.customers.find(c=>String(c.mobile||'').replace(/\D/g,'').slice(-10)===md);if(existing){toast('Customer already registered');return}}
+ let cr=await sb.rpc('pos_next_customer_code');if(cr.error){toast('Customer code failed: '+cr.error.message);return}let code=String(cr.data||'').trim();
+ let r=await sb.from('pos_customers').insert({customer_code:code,customer_name:name,mobile:mobile||null,address,category,area}).select('*').single();
+ if(r.error){toast('Customer save failed: '+r.error.message);return}
+ await refreshCustomers();$('posCustomer').value=code;customerMode('existing');renderBill();toast('Customer saved in Supabase');
+}
+async function refreshCustomers(){let r=await sb.from('pos_customers').select('*').order('customer_code');if(r.error){toast('Customer fetch failed: '+r.error.message);return false}db.customers=r.data.map(x=>({code:x.customer_code,name:x.customer_name,mobile:x.mobile||'',address:x.address||'',area:x.area||'',category:String(x.category||'D').trim().toUpperCase(),gstin:x.gstin||'',remark:x.remark||''}));cache();renderAll();return true}
+async function refreshItems(){let r=await sb.from('pos_items').select('*').order('item_code');if(r.error){toast('Item fetch failed: '+r.error.message);return false}db.items=r.data.map(x=>({code:x.item_code,name:x.item_name,brand:String(x.brand||'').toUpperCase(),standardPacking:Math.max(1,parseInt(x.standard_packing)||1),mrp:+x.mrp,basePrice:+x.base_price,pricingType:x.pricing_type||'DISCOUNT',schemeExcluded:!!x.scheme_excluded}));cache();renderAll();return true}
+
+function scanAdd(){
+ let v=$('scanNo').value.trim().toUpperCase();if(!v)return;
+ let q=db.qrs.find(x=>x.token===v||String(x.serial||'').toUpperCase()===v);
+ if(!q){toast('QR not found');$('scanNo').select();return}
+ if(q.sold||q.status==='SOLD'||Number(q.remainingQty||0)<=0){toast('QR already fully used / sold');return}
+ if(cart.some(x=>x.token===q.token)){toast('This QR is already in current bill');return}
+ let item=db.items.find(i=>i.code===q.itemCode);if(!item){toast('Mapped item not found in Item Master');return}
+ let pack=Math.max(1,parseInt(q.packQty)||parseInt(item.standardPacking)||1);
+ let remaining=Math.min(pack,Math.max(0,Number(q.remainingQty??pack)));
+ let raw=prompt(`QR Pack: ${pack} PCS\nAvailable in this QR: ${remaining} PCS\nQty to bill:`,String(remaining));
+ if(raw===null){$('scanNo').value='';return}
+ let qty=Number(raw);
+ if(!Number.isInteger(qty)||qty<=0){toast('Enter valid whole-piece quantity');return}
+ if(qty>remaining){toast('Qty cannot exceed QR balance '+remaining);return}
+ cart.push({itemCode:q.itemCode,qty,token:q.token,source:'QR',qrRemainingBefore:remaining,qrPackQty:pack});
+ $('scanNo').value='';renderBill();
+}
+function setQrCartQty(token,value){
+ let row=cart.find(x=>x.token===token);if(!row)return;
+ let max=Math.max(1,Number(row.qrRemainingBefore||row.qrPackQty||row.qty||1)),q=Number(value);
+ if(!Number.isInteger(q)||q<1||q>max){toast('QR qty must be 1 to '+max);renderBill();return}
+ row.qty=q;renderBill();
+}
+
+function manualAdd(){
+ let code=$('manualCode').value.trim().toUpperCase(),qty=Math.max(1,parseInt($('manualQty').value)||1);
+ if(!db.items.some(i=>i.code===code)){toast('Item code not found');return}
+ cart.push({itemCode:code,qty,token:null,source:'MANUAL'});$('manualCode').value='';$('manualQty').value=1;renderBill();
+}
+
+async function holdCurrentBill(){
+ if(!cart.length){toast('Nothing to hold');return}
+ let cust=currentCustomer(),payload={customer:cust||null,customerMode:$('custMode')?.value||'',cart:cart,lineOverrides:lineOverrides||{},cash:Number($('billCashAmount')?.value||0),online:Number($('billOnlineAmount')?.value||0),credit:Number($('billCreditUsed')?.value||0),fullyCredit:!!$('fullyCredit')?.checked,billAdjustment:getBillAdjustment(cart.reduce((sum,x)=>sum+(Number(x.qty||0)*Number(x.rate||0)),0))};
+ let code=cust?.customer_code||cust?.code||'WALK-IN';
+ let r=await sb.rpc('pos_hold_bill',{p_token:sessionToken,p_customer_code:code,p_payload:payload});
+ if(r.error){toast('Hold failed: '+r.error.message);return}
+ toast('Bill held');cart=[];lineOverrides={};if($('billCashAmount'))$('billCashAmount').value=0;if($('billOnlineAmount'))$('billOnlineAmount').value=0;if($('billCreditUsed'))$('billCreditUsed').value=0;if($('fullyCredit'))$('fullyCredit').checked=false;renderBill();
+}
+async function openHeldBills(){
+ let r=await sb.rpc('pos_get_held_bills',{p_token:sessionToken});if(r.error){toast('Held bills load failed: '+r.error.message);return}
+ $('heldBillRows').innerHTML=(r.data||[]).map(x=>`<tr><td>${x.held_at?new Date(x.held_at).toLocaleString():''}</td><td>${x.customer_code||''}</td><td>${x.item_count||0}</td><td>${money(x.bill_amount||0)}</td><td>${x.held_by||''}</td><td><button class="btn" onclick="resumeHeldBill('${x.hold_id}')">Resume</button> <button class="btn red adminOnly" onclick="cancelHeldBill('${x.hold_id}')">Cancel</button></td></tr>`).join('')||'<tr><td colspan="6">No held bills</td></tr>';$('heldBillsModal').classList.add('show');
+}
+function closeHeldBills(){$('heldBillsModal').classList.remove('show')}
+async function resumeHeldBill(id){
+ if(cart.length&&!confirm('Current unsaved bill will be replaced. Continue?'))return;
+ let r=await sb.rpc('pos_resume_held_bill',{p_token:sessionToken,p_hold_id:id});if(r.error){toast('Resume failed: '+r.error.message);return}
+ let x=Array.isArray(r.data)?r.data[0]:r.data,p=x?.payload||x;cart=p?.cart||[];lineOverrides=p?.lineOverrides||{};
+ if(p?.customer?.code&&$('posCustomer')){$('custMode').value='EXISTING';$('posCustomer').value=p.customer.code}
+ if($('billCashAmount'))$('billCashAmount').value=p?.cash||0;if($('billOnlineAmount'))$('billOnlineAmount').value=p?.online||0;if($('billCreditUsed'))$('billCreditUsed').value=p?.credit||0;if($('fullyCredit'))$('fullyCredit').checked=!!p?.fullyCredit;if(p?.billAdjustment){if($('billDiscount'))$('billDiscount').value=p.billAdjustment.input||0;if($('billDiscountType'))$('billDiscountType').value=p.billAdjustment.type||'AMOUNT';if($('billDiscountReason'))$('billDiscountReason').value=p.billAdjustment.reason||'';}
+ closeHeldBills();renderBill();toast('Held bill resumed');
+}
+async function cancelHeldBill(id){
+ if(currentUser?.role!=='ADMIN'){toast('Admin only');return}
+ let reason=prompt('Reason for cancelling held bill?');if(!reason?.trim())return;
+ let r=await sb.rpc('pos_cancel_held_bill',{p_token:sessionToken,p_hold_id:id,p_reason:reason.trim()});if(r.error){toast('Cancel failed: '+r.error.message);return}toast('Held bill cancelled');openHeldBills();
+}
+async function saveBill(doPrint=false){
+ // V6.7 cart integrity: QR quantities are immutable; server performs final stock/QR validation.
+ // V6.6 bill-level discount + round-off validation
+ let preAdjustTotal=cart.reduce((sum,x)=>sum+(Number(x.qty||0)*Number(x.rate||0)),0);
+ let billAdj=getBillAdjustment(preAdjustTotal);
+ if(billAdj.discount>0&&!billAdj.reason){toast('Bill discount reason is mandatory');return}
+ if(billAdj.input<0||(billAdj.type==='PERCENT'&&billAdj.input>100)){toast('Invalid bill discount');return}
+ if(!cart.length){toast('Bill is empty');return}if(!remoteOK){toast('Supabase connection required');return}
+ let cust=currentCustomer(),cat=currentCategory(),groups={};
+ cart.forEach(x=>{let k=x.itemCode+'|'+x.source;if(!groups[k])groups[k]={key:k,itemCode:x.itemCode,qty:0,tokens:[],qrAllocations:[],source:x.source};groups[k].qty+=x.qty||1;if(x.token){groups[k].tokens.push(x.token);groups[k].qrAllocations.push({token:x.token,qty:Number(x.qty||1)})}});
+ let lines=[];
+ for(let g of Object.values(groups)){let i=db.items.find(x=>x.code===g.itemCode);if(!i){toast('Item missing: '+g.itemCode);return}let r=rate(i,cat,g.key),o=lineOverrides[g.key];if(r===null){toast('Pricing missing for '+i.code+' / '+cat);return}lines.push({...g,name:i.name,mrp:+i.mrp,rate:r,discount:discountFor(i,cat,g.key),amount:+(r*g.qty).toFixed(2),systemRate:o?o.systemRate:systemRate(i,cat),overrideReason:o?.reason||null,overrideBy:o?.by||null,overrideAt:o?.at||null})}
+ let gross=+lines.reduce((a,x)=>a+x.amount,0).toFixed(2),adj=getBillAdjustment(gross),total=+adj.final.toFixed(2),p=billPaymentSplit(),at=new Date().toISOString();
+ let credit=Math.max(0,Number($('billCreditUsed')?.value||0));
+ if(!Number.isFinite(p.cash)||!Number.isFinite(p.online)||p.cash<0||p.online<0||!Number.isFinite(credit)){toast('Payment amount cannot be negative');return}
+ p.cash=+p.cash.toFixed(2);p.online=+p.online.toFixed(2);credit=+credit.toFixed(2);p.total=+(p.cash+p.online).toFixed(2);
+ if(credit>0&&!cust){toast('Customer Credit cannot be used for Walk-in');return}
+ let available=cust?Math.max(0,-customerBalance(cust.code)):0;
+ if(credit>available+0.009){toast('Customer Credit exceeds available credit');return}
+ let adjusted=+(p.total+credit).toFixed(2),balance=+(total-adjusted).toFixed(2);
+ if(adjusted>total+0.009){toast('Cash + Online + Customer Credit cannot exceed Final Net Bill');return}
+ if(balance<0){toast('Payment total mismatch');return}
+ if(adjusted===0){
+  if(!cust){toast('Walk-in bill cannot be Fully Credit');return}
+  if(!$('fullyCredit').checked){toast('Enter payment / credit or tick Fully Credit');return}
+ }else if($('fullyCredit').checked){toast('Fully Credit cannot be selected when payment or credit is entered');return}
+ if(!cust&&adjusted<total){toast('Walk-in bill must be fully paid');return}
+ let br=await sb.rpc('pos_save_bill_v6',{p_token:sessionToken,p_bill_no:null,p_bill_date:at,p_customer_code:cust?.code||null,p_customer_name:cust?.name||'Walk-in',p_customer_mobile:cust?.mobile||'',p_customer_category:cat,p_cash_amount:p.cash,p_online_amount:p.online,p_credit_used:credit,p_gross_amount:gross,p_bill_discount:adj.discount,p_discount_reason:adj.reason||null,p_round_off:adj.roundOff,p_total_amount:total,p_lines:lines});
+ if(br.error){toast('Bill save failed: '+br.error.message);return}
+ let bill=String(br.data||'').trim();if(!bill){toast('Bill number not returned');return}
+ await loadRemote();openedBill=await fetchBill(bill);if(openedBill)buildReceipt(openedBill);
+ cart=[];lineOverrides={};$('billCashAmount').value=0;$('billOnlineAmount').value=0;$('billCreditUsed').value=0;$('billDiscount').value=0;$('billDiscountReason').value='';$('fullyCredit').checked=false;$('paidAmount').value=0;$('billPaidTotal').textContent=money(0);renderAll();toast('Bill saved • '+bill);if(doPrint)setTimeout(()=>window.print(),150);
+}
+async function fetchBill(no){
+ let b=db.bills.find(x=>(x.bill||'').toUpperCase()===String(no||'').toUpperCase());
+ if(!b&&remoteOK){let r=await sb.from('pos_bills').select('*,pos_bill_lines(*)').eq('bill_no',no).maybeSingle();if(r.error){toast('Bill fetch failed: '+r.error.message);return null}if(r.data)b={bill:r.data.bill_no,at:r.data.bill_date,customerCode:r.data.customer_code||'',customerName:r.data.customer_name,customerMobile:r.data.customer_mobile||'',category:r.data.customer_category,paymentMethod:r.data.payment_method,paidAmount:+r.data.paid_amount,total:+r.data.total_amount,balanceAmount:+r.data.balance_amount||0,creditUsed:+r.data.credit_used||0,lines:(r.data.pos_bill_lines||[]).map(l=>({itemCode:l.item_code,name:l.item_name,mrp:+l.mrp,qty:+l.qty,rate:+l.rate,discount:+l.discount_pct,amount:+l.amount,source:l.entry_source,tokens:l.qr_tokens||[]}))}}
+ return b||null;
+}
+async function openBill(doPrint=false,noArg=''){
+ let no=String(noArg||$('billSearch').value||'').trim().toUpperCase();if(!no){toast('Select a saved bill');return}
+ let b=await fetchBill(no);if(!b){toast('Bill not found');return}openedBill=b;buildReceipt(b);$('billSearch').value=b.bill;$('openedBillInfo').textContent=`${b.bill} • ${b.customerName} • ${money(b.total)}`;$('openedBillDetails').innerHTML=`<div class="tablewrap"><table><thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${b.lines.map(l=>`<tr><td>${l.itemCode} — ${l.name}</td><td>${l.qty}</td><td>${money(l.rate)}</td><td>${money(l.amount)}</td></tr>`).join('')}</tbody></table></div>`;$('cancelOpenedBillBtn').classList.toggle('hidden',b.status==='CANCELLED');$('correctOpenedBillBtn').classList.toggle('hidden',currentUser?.role!=='ADMIN'||b.status==='CANCELLED');toast('Bill opened');
+}
+function reprintOpenedBill(){if(!openedBill){toast('Open a saved bill first');return}buildReceipt(openedBill);window.print()}
+function startReturnOpenedBill(){if(!openedBill){toast('Open a saved bill first');return}showPage('salesReturn');if($('returnBillContext'))$('returnBillContext').innerHTML=`Return against Bill <b>${openedBill.bill}</b> • ${openedBill.customerName||openedBill.customerCode||''}`;if($('creditCustomer')&&openedBill.customerCode)$('creditCustomer').value=openedBill.customerCode;if($('returnQr'))$('returnQr').focus();toast('Scan QR from '+openedBill.bill)}
+
+async function cancelOpenedBill(){if(!openedBill){toast('Open a bill first');return}if(openedBill.status==='CANCELLED'){toast('Bill already cancelled');return}let reason=prompt('Cancellation reason');if(!reason)return;if(!confirm(`Cancel ${openedBill.bill}? Stock/QR and ledger will be reversed.`))return;let r=await sb.rpc('pos_cancel_bill',{p_token:sessionToken,p_bill_no:openedBill.bill,p_reason:reason});if(r.error){toast('Cancel failed: '+r.error.message);return}toast('Bill cancelled and reversed');openedBill=null;$('openedBillInfo').textContent='';$('openedBillDetails').innerHTML='';$('cancelOpenedBillBtn').classList.add('hidden');$('correctOpenedBillBtn').classList.add('hidden');await loadRemote()}
+async function correctOpenedBill(){
+ if(currentUser?.role!=='ADMIN'){toast('Admin only');return}
+ if(!openedBill){toast('Open a saved bill first');return}
+ let reason=prompt('Correction reason (required)');
+ if(!String(reason||'').trim()){toast('Correction reason required');return}
+ let kind=prompt('Correction type: CUSTOMER / ITEM-QTY / PAYMENT / OTHER','OTHER');
+ if(kind===null)return;
+ kind=String(kind||'OTHER').trim().toUpperCase();
+ if(!['CUSTOMER','ITEM-QTY','PAYMENT','OTHER'].includes(kind)){toast('Invalid correction type');return}
+ let note=prompt('Correction details / note (required)');
+ if(!String(note||'').trim()){toast('Correction details required');return}
+ if(!confirm(`Submit correction for ${openedBill.bill}?\n\nOriginal bill will remain in audit history. Stock/QR, ledger, outstanding and collection reconciliation will be handled by the server correction transaction.`))return;
+ let r=await sb.rpc('pos_request_bill_correction',{
+  p_token:sessionToken,p_bill_no:openedBill.bill,p_correction_type:kind,
+  p_reason:String(reason).trim(),p_note:String(note).trim()
+ });
+ if(r.error){toast('Correction failed: '+r.error.message);return}
+ toast('Bill correction recorded');
+ await loadRemote();openedBill=await fetchBill(openedBill.bill);if(openedBill)await openBill(false,openedBill.bill)
+}
+function renderCompanyProfile(){
+ let p=db.companyProfile||{};
+ if($('cpFirmName'))$('cpFirmName').value=p.firm_name||'';
+ if($('cpGstin'))$('cpGstin').value=p.gstin||'';
+ if($('cpInvoiceTitle'))$('cpInvoiceTitle').value=p.invoice_title||'TAX INVOICE';
+ if($('cpPhone'))$('cpPhone').value=p.phone||'';
+ if($('cpAddress'))$('cpAddress').value=p.address||'';
+}
+async function saveCompanyProfile(){
+ if(currentUser?.role!=='ADMIN'){toast('Admin only');return}
+ let row={id:1,firm_name:$('cpFirmName').value.trim().toUpperCase(),gstin:$('cpGstin').value.trim().toUpperCase(),invoice_title:($('cpInvoiceTitle').value.trim()||'TAX INVOICE').toUpperCase(),phone:$('cpPhone').value.trim(),address:$('cpAddress').value.trim().toUpperCase(),updated_at:new Date().toISOString()};
+ if(!row.firm_name){toast('Firm Name required');return}
+ let r=await sb.rpc('pos_admin_save_company_profile',{p_token:sessionToken,p_firm_name:row.firm_name,p_gstin:row.gstin,p_invoice_title:row.invoice_title,p_address:row.address,p_phone:row.phone});if(r.error){toast('Company Profile save failed: '+r.error.message);return}
+ db.companyProfile=row;toast('Company Profile saved');
+}
+function buildReceipt(b){
+ let p=db.companyProfile||{},firm=p.firm_name||'ABS CORP',title=p.invoice_title||'TAX INVOICE';
+ $('receiptPrint').innerHTML=`<div style="text-align:center"><b style="font-size:16px">${firm}</b>${p.address?'<br>'+p.address:''}${p.phone?'<br>Ph: '+p.phone:''}${p.gstin?'<br><b>GSTIN: '+p.gstin+'</b>':''}<br><b>${title}</b></div><hr>
+ <div>Bill: <b>${b.bill}</b><br>Date: ${new Date(b.at).toLocaleString()}<br>Customer: ${b.customerName}${b.customerMobile?'<br>Mobile: '+b.customerMobile:''}</div><hr>
+ <table><thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amt</th></tr></thead><tbody>${b.lines.map(l=>`<tr><td>${l.itemCode}<br>${l.name}</td><td>${l.qty}</td><td>${l.rate.toFixed(2)}</td><td>${l.amount.toFixed(2)}</td></tr>`).join('')}</tbody></table>
+ <hr><div style="text-align:right"><b>Bill Amount: ${money(b.total)}</b><br>Paid: ${money(b.paidAmount)}<br>Mode: ${b.paymentMethod}<br>Bill Balance: ${money(Math.max(0,b.total-b.paidAmount))}${b.customerCode?'<br><b>Total Outstanding: '+money(customerBalance(b.customerCode))+'</b>':''}</div><hr><div style="text-align:center">Thank you</div>`;
+}
+
+async function generateQRBatch(){
+ let code=$('qrItemCode').value.trim().toUpperCase(),qty=Math.min(500,Math.max(1,+$('qrQty').value||1)),batch=$('qrBatch').value.trim()||('B'+Date.now()),date=$('qrDate').value||localDate();
+ if(!db.items.some(i=>i.code===code)){toast('Item code not found');return}
+ let slabs=[];try{slabs=await getBgRewardDefinitionForQR(code)}catch(e){toast('Reward definition load failed: '+e.message);return}
+ if(!slabs.length){toast('Bike Guru reward definition is not active for this item');return}
+ let rewards=allocateBgRewards(qty,slabs);
+ let item=db.items.find(i=>i.code===code),pack=Math.max(1,parseInt(item?.standardPacking)||1),rows=[];
+ for(let n=0;n<qty;n++)rows.push({token:uniqueToken(),serial_no:uniqueSerial(),item_code:code,batch_no:batch,packed_date:date,status:'IN STOCK',pack_qty:pack,remaining_qty:pack,bike_guru_reward:rewards[n]});
+ if(remoteOK){let r=await sb.from('pos_qr_registry').insert(rows);if(r.error){toast('QR save failed: '+r.error.message);return}}
+ lastGenerated=rows.map(x=>({token:x.token,serial:x.serial_no,itemCode:x.item_code,batch:x.batch_no,packedDate:x.packed_date,status:x.status,packQty:x.pack_qty,remainingQty:x.remaining_qty,bikeGuruReward:x.bike_guru_reward,sold:false,saleBill:null}));
+ db.qrs.push(...lastGenerated);cache();renderQRPreview();
+ let dist={};rewards.forEach(v=>dist[v]=(dist[v]||0)+1);
+ toast(qty+' QRs generated • Rewards: '+Object.entries(dist).sort((a,b)=>Number(a[0])-Number(b[0])).map(([p,n])=>`${p}=${n}`).join(', '));
+}
+function renderQRPreview(){
+ let box=$('qrPreview');box.innerHTML='';
+ lastGenerated.forEach((q,n)=>{let i=db.items.find(x=>x.code===q.itemCode),d=document.createElement('div');d.className='qrlabel';d.innerHTML=`<div id="qrp${n}"></div><div style="font-size:11px;font-weight:900;overflow-wrap:anywhere">FIT FOR ${i?.name||q.itemCode}</div><div style="font-size:9px;overflow-wrap:anywhere">${q.itemCode}</div><div style="font-size:9px;font-weight:800;word-break:break-all">${q.serial}</div>`;box.appendChild(d);new QRCode($('qrp'+n),{text:q.token,width:105,height:105,correctLevel:QRCode.CorrectLevel.M})});
+}
+function printQRLabels(){
+ if(!lastGenerated.length){toast('Generate QR first');return}
+ let old=document.getElementById('qrPrintFrame');if(old)old.remove();
+ let f=document.createElement('iframe');f.id='qrPrintFrame';f.style.position='fixed';f.style.right='0';f.style.bottom='0';f.style.width='1px';f.style.height='1px';f.style.border='0';document.body.appendChild(f);
+ let cards=lastGenerated.map((q,n)=>{let i=db.items.find(x=>x.code===q.itemCode);return `<div class="lab c${n%5+1}"><div id="q${n}" class="q"></div><div class="tx"><div class="fit">FIT FOR ${i?.name||q.itemCode}</div><div class="code">${q.itemCode}</div><div class="ser">${q.serial}</div></div></div>`}).join('');
+ let d=f.contentDocument;d.open();d.write(`<!doctype html><html><head><meta charset="utf-8"><title>ABS QR Labels</title><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script><style>
+ @page{size:A4;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0}.sheet{padding-top:11.5mm;padding-left:7mm;display:grid;grid-template-columns:repeat(5,38.1mm);grid-auto-rows:21.2mm;column-gap:2mm;row-gap:1mm}
+ .lab{width:38.1mm;height:21.2mm;display:flex;align-items:center;padding:1.1mm 1.2mm;overflow:hidden;break-inside:avoid}.c1{transform:translateX(-1mm)}.c2{transform:none}.c3{transform:translateX(1mm)}.c4{transform:translateX(1.25mm)}.c5{transform:translateX(1.5mm)}
+ .q,.q img,.q canvas{width:13.2mm!important;height:13.2mm!important;flex:0 0 13.2mm}.tx{padding-left:1.1mm;width:20.5mm;overflow:hidden}.fit{font:700 7.1pt Arial;line-height:2.65mm;max-height:7.95mm;overflow:hidden;white-space:normal;overflow-wrap:anywhere;word-break:break-word}.code{font:6pt Arial;line-height:2.35mm;max-height:4.7mm;overflow:hidden;white-space:normal;overflow-wrap:anywhere;word-break:break-word}.ser{font:700 5.8pt Arial;line-height:2.25mm;max-height:4.5mm;overflow:hidden;word-break:break-all}
+ </style></head><body><div class="sheet">${cards}</div></body></html>`);d.close();
+ let tries=0,t=setInterval(()=>{tries++;let Q=f.contentWindow.QRCode;if(Q){clearInterval(t);lastGenerated.forEach((q,n)=>new Q(d.getElementById('q'+n),{text:q.token,width:100,height:100,correctLevel:Q.CorrectLevel.M}));setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.print()}catch(e){toast('Print failed: '+e.message)}},350)}else if(tries>30){clearInterval(t);toast('QR print library did not load')}},100);
+}
+function loadCustomerForEdit(){let c=db.customers.find(x=>x.code===$('masterCustomerSelect').value);if(!c){clearCustomerMaster(false);return}$('mCustCode').value=c.code;$('mCustCode').readOnly=true;$('mCustName').value=c.name;$('mCustMobile').value=c.mobile;$('mCustAddress').value=c.address||'';$('mCustArea').value=c.area||'';$('mCustCategory').value=c.category||'D';$('mCustGSTIN').value=c.gstin||'';$('mCustRemark').value=c.remark||''}
+function clearCustomerMaster(resetSelect=true){if(resetSelect)$('masterCustomerSelect').value='';$('mCustCode').value='';$('mCustCode').readOnly=false;$('mCustName').value='';$('mCustMobile').value='';$('mCustMobile').readOnly=false;$('mCustAddress').value='';$('mCustArea').value='';$('mCustCategory').value='D';$('mCustGSTIN').value='';$('mCustRemark').value=''}
+function renderBrandProductMasters(){
+ let b=$('mItemBrand'),p=$('mItemProduct');if(b){let cur=b.value;b.innerHTML='<option value="">Select Brand</option>'+((db.brands||[]).map(x=>`<option>${esc(x)}</option>`).join(''));if((db.brands||[]).includes(cur))b.value=cur}
+ if(p){let cur=p.value;p.innerHTML='<option value="">Select Product</option>'+((db.products||[]).map(x=>`<option>${esc(x)}</option>`).join(''));if((db.products||[]).includes(cur))p.value=cur}
+ if($('brandMasterList'))$('brandMasterList').textContent=(db.brands||[]).join(' • ')||'No brands';
+ if($('productMasterList'))$('productMasterList').textContent=(db.products||[]).join(' • ')||'No products';
+}
+async function refreshBrandProductMasters(){
+ let [b,p]=await Promise.all([sb.from('pos_brand_master').select('*').eq('active',true).order('brand_name'),sb.from('pos_product_master').select('*').eq('active',true).order('product_name')]);
+ if(b.error||p.error){toast('Brand/Product master fetch failed');return false}
+ db.brands=(b.data||[]).map(x=>String(x.brand_name||'').toUpperCase());db.products=(p.data||[]).map(x=>String(x.product_name||'').toUpperCase());renderBrandProductMasters();cache();return true
+}
+async function saveBrandMaster(){
+ if(currentUser?.role!=='ADMIN'){toast('Admin only');return}let name=$('newBrandName').value.trim().toUpperCase();if(!name){toast('Brand name required');return}
+ let r=await sb.from('pos_brand_master').insert({brand_name:name});if(r.error){toast(r.error.code==='23505'?'Brand already exists':r.error.message);return}$('newBrandName').value='';await refreshBrandProductMasters();toast('Brand added')
+}
+async function saveProductMaster(){
+ if(currentUser?.role!=='ADMIN'){toast('Admin only');return}let name=$('newProductName').value.trim().toUpperCase();if(!name){toast('Product name required');return}
+ let r=await sb.from('pos_product_master').insert({product_name:name});if(r.error){toast(r.error.code==='23505'?'Product already exists':r.error.message);return}$('newProductName').value='';await refreshBrandProductMasters();toast('Product added')
+}
+function loadItemForEdit(){let i=db.items.find(x=>x.code===$('masterItemSelect').value);if(!i){clearItemMaster(false);return}$('mItemCode').value=i.code;$('mItemCode').readOnly=true;$('mItemName').value=i.name;$('mItemBrand').value=i.brand||'';$('mItemProduct').value=i.product||'';$('mItemPacking').value=i.standardPacking||1;$('mItemMRP').value=i.mrp;$('mItemPrice').value=i.basePrice;$('mPricingType').value=i.pricingType||'DISCOUNT';$('mSchemeExcluded').value=String(!!i.schemeExcluded)}
+function clearItemMaster(resetSelect=true){if(resetSelect&&$('masterItemSelect'))$('masterItemSelect').value='';$('mItemCode').value='';$('mItemCode').readOnly=false;$('mItemName').value='';$('mItemBrand').value='';$('mItemProduct').value='';$('mItemPacking').value=1;$('mItemMRP').value='';$('mItemPrice').value='';$('mPricingType').value='DISCOUNT';$('mSchemeExcluded').value='false'}
+function editItemByCode(code){showPage('masters',document.querySelector('nav button[onclick*="masters"]'));$('masterItemSelect').value=code;loadItemForEdit();window.scrollTo({top:0,behavior:'smooth'})}
+function autoPickCustomerByMobile(v){let digits=String(v||'').replace(/\D/g,'');if(digits.length<10)return;let c=db.customers.find(x=>String(x.mobile||'').replace(/\D/g,'').slice(-10)===digits.slice(-10));if(c){$('posCustomer').value=c.code;renderBill()}}
+
+
+function cleanHeader(v){return String(v||'').trim().toLowerCase().replace(/[^a-z0-9]/g,'')}
+
+async function uploadItems(){
+ if(currentUser?.role!=='ADMIN'){toast('Admin only');return}
+ if(!remoteOK){toast('Supabase connection required');return}
+ let f=$('itemUploadFile').files[0];if(!f){toast('Select Excel / CSV file');return}
+ try{
+  let data=await f.arrayBuffer(),wb=XLSX.read(data,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],raw=XLSX.utils.sheet_to_json(ws,{defval:''});
+  if(!raw.length){toast('File is empty');return}
+  let rows=raw.map(row=>{let m={};Object.keys(row).forEach(k=>m[cleanHeader(k)]=row[k]);
+   let code=String(m.itemcode??m.code??m.partcode??'').trim().toUpperCase(),name=String(m.itemname??m.name??m.description??'').trim().toUpperCase(),brand=String(m.brand??'').trim().toUpperCase(),product=String(m.product??'').trim().toUpperCase(),standard_packing=Math.max(1,parseInt(m.standardpacking??m.packqty??m.packing??1)||1),
+       mrp=Number(m.mrp??m.price??0),base=Number(m.baseprice??m.base??m.sellingprice??0),
+       pt=String(m.pricingtype??m.pricetype??'DISCOUNT').trim().toUpperCase();
+   if(!['DISCOUNT','NET'].includes(pt))pt='DISCOUNT';
+   let ex=['yes','true','1','excluded','notpartofscheme'].includes(String(m.schemeexcluded??m.notpartofscheme??'').trim().toLowerCase());
+   return {item_code:code,item_name:name,brand,product,standard_packing,mrp,base_price:base,pricing_type:pt,scheme_excluded:ex}
+  }).filter(x=>x.item_code&&x.item_name&&x.brand&&x.product&&x.standard_packing>0&&x.mrp>0);
+  if(!rows.length){toast('No valid rows. Need Item Code, Item Name, Brand, Product, Standard Packing, MRP');return}
+  let invalidMaster=rows.filter(x=>!(db.brands||[]).includes(x.brand)||!(db.products||[]).includes(x.product));if(invalidMaster.length){toast('Upload stopped — Brand/Product not found in Master: '+invalidMaster.slice(0,5).map(x=>x.item_code).join(', '));return}
+  let seen=new Set(),fileDup=[];for(let x of rows){if(seen.has(x.item_code))fileDup.push(x.item_code);seen.add(x.item_code)}
+  if(fileDup.length){toast('Duplicate Item Code in file: '+[...new Set(fileDup)].slice(0,8).join(', '));return}
+  let existing=rows.filter(x=>db.items.some(i=>i.code===x.item_code)).map(x=>x.item_code);
+  if(existing.length){toast('Upload stopped — Item Code already exists: '+existing.slice(0,8).join(', ')+(existing.length>8?'…':''));return}
+  $('uploadStatus').textContent='Uploading '+rows.length+' new items…';
+  for(let i=0;i<rows.length;i+=300){let r=await sb.from('pos_items').insert(rows.slice(i,i+300));if(r.error)throw r.error}
+  await refreshItems();$('uploadStatus').textContent=rows.length+' new items uploaded';toast('Item master uploaded');
+ }catch(e){$('uploadStatus').textContent='Upload failed';toast('Upload failed: '+e.message)}
+}
+
+async function refreshPricing(){
+ let r=await sb.from('pos_item_category_pricing').select('*').order('item_code');
+ if(r.error){toast('Pricing fetch failed: '+r.error.message);return false}
+ db.pricing=(r.data||[]).map(x=>({itemCode:x.item_code,category:String(x.customer_category||'D').trim().toUpperCase(),discount:+x.discount_pct,rate:+x.selling_rate}));
+ cache();renderAll();return true
+}
+
+let currentClosing=null;
+async function loadDayClosing(){
+ if(currentUser?.role!=='ADMIN'){toast('Admin only');return}
+ let d=$('closeDate').value||localDate(),opening=Math.max(0,Number($('openingCash').value||0));
+ let r=await sb.rpc('pos_get_day_closing_summary',{p_token:sessionToken,p_date:d,p_opening_cash:opening});
+ if(r.error){currentClosing=null;toast('Closing calculation failed: '+r.error.message);return}
+ currentClosing=Array.isArray(r.data)?r.data[0]:r.data;if(!currentClosing){toast('No closing data');return}
+ $('closingSummary').innerHTML=`Opening Cash ${money(currentClosing.opening_cash||opening)} • Cash Received ${money(currentClosing.cash_received||0)} • Cash Returned ${money(currentClosing.cash_refunded||0)} • <b>Expected Cash ${money(currentClosing.expected_cash||0)}</b><br>Online/UPI Received ${money(currentClosing.online_received||0)} • Online Returned ${money(currentClosing.online_refunded||0)} • <b>Net Online ${money(currentClosing.net_online||0)}</b>`;
+ renderClosingDifference();await loadClosingHistory();
+}
+function renderClosingDifference(){
+ let expected=Number(currentClosing?.expected_cash||0),actual=Number($('actualCash')?.value||0);
+ if($('cashDifference'))$('cashDifference').value=money(actual-expected);
+}
+async function saveDayClosing(){
+ if(currentUser?.role!=='ADMIN'){toast('Admin only');return}
+ if(!currentClosing){toast('Calculate closing first');return}
+ let actual=Number($('actualCash').value||0);if(actual<0){toast('Actual cash cannot be negative');return}
+ let r=await sb.rpc('pos_save_day_closing',{p_token:sessionToken,p_date:$('closeDate').value||localDate(),p_opening_cash:Number(currentClosing.opening_cash||0),p_actual_cash:actual,p_remark:$('closingRemark').value.trim()});
+ if(r.error){toast('Closing save failed: '+r.error.message);return}
+ toast('Day closing saved');await loadClosingHistory();
+}
+async function loadClosingHistory(){
+ let r=await sb.rpc('pos_get_day_closing_history',{p_token:sessionToken});
+ if(r.error)return;
+ $('closingHistory').innerHTML=(r.data||[]).map(x=>`<tr><td>${x.closing_date||''}</td><td>${money(x.expected_cash||0)}</td><td>${money(x.actual_cash||0)}</td><td>${money(x.difference_amount||0)}</td><td>${money(x.net_online||0)}</td><td>${x.closed_by||''}</td><td>${x.closed_at?new Date(x.closed_at).toLocaleString():''}</td><td>${x.remark||''}</td></tr>`).join('')||'<tr><td colspan="8">No saved closings</td></tr>';
+}
+let customerStatementData=[];
+async function loadCustomerStatement(){
+ let code=$('stmtCustomer').value.trim().toUpperCase();if(!code){toast('Enter customer code');return}
+ let f=$('stmtFrom').value||'2000-01-01',t=$('stmtTo').value||localDate();
+ let r=await sb.rpc('pos_get_customer_statement',{p_token:sessionToken,p_customer_code:code,p_from_date:f,p_to_date:t});
+ if(r.error){customerStatementData=[];toast('Statement load failed: '+r.error.message);return}
+ customerStatementData=r.data||[];
+ let last=customerStatementData.length?customerStatementData[customerStatementData.length-1]:null;
+ $('stmtSummary').innerHTML=`<b>${code}</b> • Current Outstanding: ${money(Math.max(0,Number(last?.running_balance||0)))} • Available Credit: ${money(Math.max(0,-Number(last?.running_balance||0)))}`;
+ $('stmtRows').innerHTML=customerStatementData.map(x=>`<tr><td>${new Date(x.entry_at).toLocaleString()}</td><td>${x.entry_type||''}</td><td>${x.reference_no||''}</td><td>${money(x.debit||0)}</td><td>${money(x.credit||0)}</td><td>${money(x.cash_amount||0)}</td><td>${money(x.online_amount||0)}</td><td>${money(x.running_balance||0)}</td><td>${x.note||''}</td></tr>`).join('')||'<tr><td colspan="9">No transactions</td></tr>';
+}
+function printCustomerStatement(){if(!customerStatementData.length){toast('Load statement first');return}window.print()}
+function downloadCustomerStatement(){
+ if(!customerStatementData.length){toast('Load statement first');return}
+ let rows=customerStatementData.map(x=>({"Date/Time":x.entry_at,"Type":x.entry_type||"","Reference":x.reference_no||"","Debit":Number(x.debit||0),"Credit":Number(x.credit||0),"Cash":Number(x.cash_amount||0),"Online/UPI":Number(x.online_amount||0),"Running Balance":Number(x.running_balance||0),"Note":x.note||""}));
+ let ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Customer Statement');XLSX.writeFile(wb,`ABS_Customer_Statement_${$('stmtCustomer').value.trim()}_${localDate()}.xlsx`);
+}
+let pendingReturnQr=null;
+async function lookupReturnQr(){
+ if(!remoteOK){toast('Supabase connection required');return}
+ let qr=$('returnQr').value.trim();if(!qr){toast('Enter / scan QR');return}
+ let r=await sb.rpc('pos_lookup_sold_qr',{p_token:sessionToken,p_qr_serial:qr});
+ if(r.error){pendingReturnQr=null;$('returnLookup').textContent='';toast('Return lookup failed: '+r.error.message);return}
+ let x=Array.isArray(r.data)?r.data[0]:r.data;
+ if(!x){pendingReturnQr=null;$('returnLookup').textContent='QR is not SOLD or is already returned';toast('Only SOLD QR can be returned');return}
+ pendingReturnQr=x;$('returnLookup').innerHTML=`<b>Bill:</b> ${x.bill_no||''} &nbsp; <b>Customer:</b> ${x.customer_name||x.customer_code||''}<br><b>Item:</b> ${x.item_code||''} &nbsp; <b>Sold Rate:</b> ${money(x.sold_rate||0)} &nbsp; <b>QR:</b> ${x.qr_serial||qr}`;
+}
+async function confirmQrReturn(){
+ if(!pendingReturnQr){toast('Find a SOLD QR first');return}
+ let reason=$('returnReason').value,note=$('returnNote').value.trim();if(!reason){toast('Return reason required');return}
+ if(!confirm(`Return ${pendingReturnQr.qr_serial||$('returnQr').value}?\nCustomer credit: ${money(pendingReturnQr.sold_rate||0)}`))return;
+ let r=await sb.rpc('pos_return_sold_qr',{p_token:sessionToken,p_qr_serial:pendingReturnQr.qr_serial||$('returnQr').value.trim(),p_reason:reason,p_note:note});
+ if(r.error){toast('Return failed: '+r.error.message);return}
+ toast('QR returned • Stock added • Customer credited');pendingReturnQr=null;$('returnQr').value='';$('returnReason').value='';$('returnNote').value='';$('returnLookup').textContent='Sold QR details will appear here.';await loadBalances();
+}
+let loadedCustomerCredit=0;
+async function loadCustomerCredit(){
+ let code=$('creditCustomer').value.trim().toUpperCase();if(!code){toast('Enter customer code');return}
+ let r=await sb.rpc('pos_get_customer_credit',{p_token:sessionToken,p_customer_code:code});
+ if(r.error){loadedCustomerCredit=0;$('availableCredit').value=money(0);toast('Credit load failed: '+r.error.message);return}
+ loadedCustomerCredit=Math.max(0,Number(Array.isArray(r.data)?(r.data[0]?.available_credit||0):(r.data?.available_credit??r.data??0)));
+ $('availableCredit').value=money(loadedCustomerCredit);
+}
+async function refundCustomerCredit(){
+ let code=$('creditCustomer').value.trim().toUpperCase(),cash=Number($('refundCash').value||0),online=Number($('refundOnline').value||0),note=$('refundNote').value.trim();
+ if(!code){toast('Enter customer code');return}
+ if(cash<0||online<0){toast('Refund amount cannot be negative');return}
+ let total=+(cash+online).toFixed(2);if(total<=0){toast('Enter refund amount');return}
+ await loadCustomerCredit();if(total>loadedCustomerCredit+0.001){toast('Refund exceeds available customer credit');return}
+ if(!confirm(`Return money ${money(total)} to ${code}?\nCash ${money(cash)} • Online/UPI ${money(online)}`))return;
+ let r=await sb.rpc('pos_refund_customer_credit',{p_token:sessionToken,p_customer_code:code,p_cash_amount:cash,p_online_amount:online,p_note:note});
+ if(r.error){toast('Refund failed: '+r.error.message);return}
+ toast('Returned money saved • Customer credit reduced');$('refundCash').value=0;$('refundOnline').value=0;$('refundNote').value='';await loadCustomerCredit();await loadBalances();
+}
+async function loadStockQrAudit(){
+ if(currentUser?.role!=='ADMIN'){toast('Admin only');return}
+ let f=$('sqFrom').value||localDate(),t=$('sqTo').value||localDate();
+ let r=await sb.rpc('pos_get_stock_qr_audit',{p_token:sessionToken,p_from_date:f,p_to_date:t});
+ if(r.error){toast('Stock/QR log failed: '+r.error.message);return}
+ $('stockQrAuditRows').innerHTML=(r.data||[]).map(x=>`<tr><td>${new Date(x.created_at).toLocaleString()}</td><td>${x.action||''}</td><td>${x.bill_no||''}</td><td>${x.item_code||''}</td><td>${Number(x.qty_change||0)}</td><td>${x.qr_serial||''}</td><td>${x.user_name||x.username||''}</td></tr>`).join('')||'<tr><td colspan="7">No transactions</td></tr>';
+}
+async function loadPricingAudit(){
+ if(currentUser?.role!=='ADMIN'){toast('Admin only');return}
+ let f=$('auditFrom').value||localDate(),t=$('auditTo').value||localDate();
+ let r=await sb.rpc('pos_get_pricing_audit',{p_token:sessionToken,p_from_date:f,p_to_date:t});
+ if(r.error){toast('Audit load failed: '+r.error.message);return}
+ let rows=r.data||[];
+ $('pricingAuditRows').innerHTML=rows.map(x=>`<tr><td>${new Date(x.changed_at).toLocaleString()}</td><td>${x.audit_type||''}</td><td>${x.user_name||x.username||''}</td><td>${x.item_code||''}</td><td>${x.customer_category||x.bill_no||''}</td><td>${x.old_value??x.system_rate??''}</td><td>${x.new_value??x.final_rate??''}</td><td>${x.reason||''}</td></tr>`).join('')||'<tr><td colspan="8">No audit entries</td></tr>';
+}
+
+function showCurrentPricingInfo(){
+ let code=String($('priceItemCode')?.value||'').trim().toUpperCase(),cat=String($('priceCategory')?.value||'A').toUpperCase(),box=$('currentPricingInfo');
+ if(!box)return;
+ let item=db.items.find(x=>x.code===code);
+ if(!item){box.innerHTML='Select a valid item to see current pricing.';return}
+ let p=pricingFor(code,cat);
+ if(!p){box.innerHTML=`<b>${code} • Category ${cat}</b> — No pricing set yet. MRP ${money(item.mrp||0)}`;return}
+ box.innerHTML=`<b>${code} • Category ${cat}</b> — Current Discount: <b>${Number(p.discount||0).toFixed(2)}%</b> • Current Selling Rate: <b>${money(p.rate||0)}</b> • MRP: ${money(item.mrp||0)}`;
+}
+function editPricingCell(code,cat){
+ $('priceItemCode').value=code;$('priceCategory').value=cat;
+ let p=pricingFor(code,cat);$('priceDiscount').value=p?Number(p.discount||0):'';$('priceRate').value=p?Number(p.rate||0):'';
+ showCurrentPricingInfo();$('priceItemCode').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function confirmPricingChangeDialog(code,cat,oldD,newD,oldR,newR){
+ return new Promise(resolve=>{
+   let old=document.getElementById('pricingChangeConfirm');if(old)old.remove();
+   let d=document.createElement('div');d.id='pricingChangeConfirm';d.style.cssText='position:fixed;inset:0;background:#0008;z-index:6000;display:flex;align-items:center;justify-content:center;padding:18px';
+   d.innerHTML=`<div style="background:#fff;border-radius:16px;padding:20px;max-width:460px;width:96%;box-shadow:0 18px 60px #0005"><h3 style="margin-top:0">⚠ Pricing Change Warning</h3><div style="line-height:1.7"><b>Item:</b> ${code}<br><b>Category:</b> ${cat}<br><b>Current Discount:</b> ${Number(oldD).toFixed(2)}%<br><b>New Discount:</b> ${Number(newD).toFixed(2)}%<br><b>Current Rate:</b> ${money(oldR)}<br><b>New Rate:</b> ${money(newR)}</div><div style="display:flex;gap:10px;margin-top:16px"><button id="pcCancel" class="btn secondary" style="flex:1">Cancel</button><button id="pcSave" class="btn red" style="flex:1">Yes, Change</button></div></div>`;
+   document.body.appendChild(d);
+   d.querySelector('#pcCancel').onclick=()=>{d.remove();resolve(false)};
+   d.querySelector('#pcSave').onclick=()=>{d.remove();resolve(true)};
+ })
+}
+async function savePricingRow(){
+ if(currentUser?.role!=='ADMIN'){toast('Admin only');return}
+ if(!remoteOK){toast('Supabase connection required');return}
+ let code=$('priceItemCode').value.trim().toUpperCase(),cat=$('priceCategory').value,
+     d=Math.max(0,Math.min(100,+$('priceDiscount').value||0)),r=Math.max(0,+$('priceRate').value||0),
+     item=db.items.find(x=>x.code===code);
+ if(!item){toast('Item code not found');return}
+ let existing=pricingFor(code,cat);
+ if(r<=0)r=+(item.mrp*(1-d/100)).toFixed(2);
+ if(existing){
+   let oldD=Number(existing.discount||existing.discount_pct||0),oldR=Number(existing.rate||existing.selling_rate||0);
+   let changed=Math.abs(oldD-d)>0.0001||Math.abs(oldR-r)>0.009;
+   if(!changed){toast('No pricing change');return}
+   if(!await confirmPricingChangeDialog(code,cat,oldD,d,oldR,r)){toast('Pricing change cancelled');return}
+ }
+ let q=await sb.rpc('pos_admin_upsert_pricing',{p_token:sessionToken,p_rows:[{item_code:code,customer_category:cat,discount_pct:d,selling_rate:r}]});
+ if(q.error){toast('Pricing save failed: '+q.error.message);return}
+ await refreshPricing();$('priceDiscount').value='';$('priceRate').value='';showCurrentPricingInfo();renderMasterTables();
+ toast(existing?'Pricing changed':'Pricing saved')
+}
+
+function downloadXlsxTemplate(rows,sheetName,fileName,widths){
+ let ws=XLSX.utils.aoa_to_sheet(rows),wb=XLSX.utils.book_new();ws["!cols"]=widths.map(w=>({wch:w}));
+ XLSX.utils.book_append_sheet(wb,ws,sheetName);XLSX.writeFile(wb,fileName);
+}
+function downloadItemMasterFormat(){
+ downloadXlsxTemplate([
+  ['Item Code','Item Name','Brand','Product','Standard Packing','MRP','Base Price','Pricing Type','Scheme Excluded'],
+  ['','','','','1','','','DISCOUNT','FALSE']
+ ],'Item Master','ABS_POS_ITEM_MASTER_UPLOAD_FORMAT.xlsx',[18,32,20,20,18,14,16,18,18]);
+}
+function downloadPricingMasterFormat(){
+ downloadXlsxTemplate([
+  ['Item Code','Brand','Customer Category','Discount %','Selling Rate'],
+  ['','','A','','']
+ ],'Item Category Pricing','ABS_POS_ITEM_CATEGORY_PRICING_UPLOAD_FORMAT.xlsx',[18,20,22,16,18]);
+}
+async function uploadPricing(){
+ if(currentUser?.role!=='ADMIN'){toast('Admin only');return}
+ if(!remoteOK){toast('Supabase connection required');return}
+ let f=$('pricingUploadFile').files[0];if(!f){toast('Select pricing Excel / CSV');return}
+ try{
+  let data=await f.arrayBuffer(),wb=XLSX.read(data,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],raw=XLSX.utils.sheet_to_json(ws,{defval:''}),rows=[];
+  for(let row of raw){let m={};Object.keys(row).forEach(k=>m[cleanHeader(k)]=row[k]);
+   let code=String(m.itemcode??m.code??'').trim().toUpperCase(),cat=String(m.customercategory??m.category??'').trim().toUpperCase(),
+       d=Number(m.discount??m.discountpct??m.discountpercent??0),rr=Number(m.sellingrate??m.rate??m.price??0),item=db.items.find(x=>x.code===code);
+   if(!item||!['A','B','C','D'].includes(cat))continue;
+   d=Math.max(0,Math.min(100,d||0));if(!(rr>0))rr=+(item.mrp*(1-d/100)).toFixed(2);
+   rows.push({item_code:code,customer_category:cat,discount_pct:d,selling_rate:rr})
+  }
+  if(!rows.length){toast('No valid pricing rows');return}
+  let fileKeys=new Set(),dups=[];for(let x of rows){let k=x.item_code+'|'+x.customer_category;if(fileKeys.has(k))dups.push(k);fileKeys.add(k)}
+  if(dups.length){toast('Duplicate Item × Category in file: '+[...new Set(dups)].slice(0,6).join(', '));return}
+  let replacing=rows.filter(x=>pricingFor(x.item_code,x.customer_category));
+  if(replacing.length&&!confirm(`${replacing.length} Item × Category pricing row(s) already exist.\n\nYES = replace old pricing\nCANCEL = stop upload`)){toast('Pricing upload cancelled');return}
+  $('pricingUploadStatus').textContent='Uploading '+rows.length+' pricing rows…';
+  for(let i=0;i<rows.length;i+=300){let q=await sb.rpc('pos_admin_upsert_pricing',{p_token:sessionToken,p_rows:rows.slice(i,i+300)});if(q.error)throw q.error}
+  await refreshPricing();$('pricingUploadStatus').textContent=rows.length+' rows saved / replaced';toast('Pricing master saved')
+ }catch(e){$('pricingUploadStatus').textContent='Upload failed';toast('Pricing upload failed: '+e.message)}
+}
+
+async function saveItem(){
+ if(currentUser?.role!=='ADMIN'){toast('Admin only');return}
+ if(!remoteOK){toast('Supabase connection required');return}
+ let code=$('mItemCode').value.trim().toUpperCase(),name=$('mItemName').value.trim().toUpperCase(),brand=$('mItemBrand').value.trim().toUpperCase(),product=$('mItemProduct').value.trim().toUpperCase(),standard_packing=Math.max(1,parseInt($('mItemPacking').value)||1),mrp=+$('mItemMRP').value,base=+$('mItemPrice').value,pricing_type=$('mPricingType').value,scheme_excluded=$('mSchemeExcluded').value==='true';
+ if(!code||!name||!brand||!product||standard_packing<1||mrp<=0){toast('Code, name, brand, product, standard packing and MRP required');return}
+ if(!(db.brands||[]).includes(brand)||!(db.products||[]).includes(product)){toast('Select Brand and Product from Master');return}
+ let selected=$('masterItemSelect').value,editing=!!selected;
+ if(editing&&code!==selected){toast('Item Code cannot be changed while editing');return}
+ if(!editing){
+   let localDup=db.items.some(i=>String(i.code).toUpperCase()===code);
+   if(localDup){toast('DUPLICATE ITEM CODE — '+code+' already exists');return}
+   let ck=await sb.from('pos_items').select('item_code').eq('item_code',code).maybeSingle();
+   if(ck.error){toast('Duplicate check failed: '+ck.error.message);return}
+   if(ck.data){toast('DUPLICATE ITEM CODE — '+code+' already exists');return}
+ }
+ let q=editing
+   ? sb.from('pos_items').update({item_name:name,brand,product,standard_packing,mrp,base_price:base,pricing_type,scheme_excluded}).eq('item_code',code)
+   : sb.from('pos_items').insert({item_code:code,item_name:name,brand,product,standard_packing,mrp,base_price:base,pricing_type,scheme_excluded});
+ let r=await q.select();
+ if(r.error){
+   let msg=String(r.error.message||'');
+   if(/duplicate|unique/i.test(msg))toast('DUPLICATE ITEM CODE — '+code+' already exists');
+   else toast('Item save failed: '+msg);
+   return;
+ }
+ await refreshItems();clearItemMaster();toast(editing?'Item updated':'Item saved');
+}
+
+async function saveCustomerMaster(){
+ if(currentUser?.role!=='ADMIN'){toast('Admin only');return}
+ if(!remoteOK){toast('Supabase connection required');return}
+ let code=$('mCustCode').value.trim().toUpperCase(),name=$('mCustName').value.trim().toUpperCase(),mobile=$('mCustMobile').value.trim(),address=$('mCustAddress').value.trim().toUpperCase(),area=$('mCustArea').value.trim().toUpperCase(),category=$('mCustCategory').value,gstin=$('mCustGSTIN').value.trim().toUpperCase(),remark=$('mCustRemark').value.trim().toUpperCase();if(!name){toast('Customer name required');return}
+ let editing=!!$('masterCustomerSelect').value;
+ if(editing&&code!==$('masterCustomerSelect').value){toast('Customer Code cannot be changed while editing');return}
+ if(!editing&&code){
+   let localCodeDup=db.customers.some(c=>String(c.code||c.customer_code||'').trim().toUpperCase()===code);
+   if(localCodeDup){toast('DUPLICATE CUSTOMER CODE — '+code+' already exists');return}
+   let ckd=await sb.from('pos_customers').select('customer_code').eq('customer_code',code).maybeSingle();
+   if(ckd.error){toast('Duplicate customer check failed: '+ckd.error.message);return}
+   if(ckd.data){toast('DUPLICATE CUSTOMER CODE — '+code+' already exists');return}
+ }
+ if(!editing){let md=mobile.replace(/\D/g,'').slice(-10);if(md&&db.customers.some(c=>String(c.mobile||'').replace(/\D/g,'').slice(-10)===md)){toast('Customer already registered');return}if(!code){let cr=await sb.rpc('pos_next_customer_code');if(cr.error){toast('Customer code failed: '+cr.error.message);return}code=String(cr.data||'').trim();}}
+ let q=editing?sb.from('pos_customers').update({customer_name:name,address,area,category,gstin,remark}).eq('customer_code',code):sb.from('pos_customers').insert({customer_code:code,customer_name:name,mobile:mobile||null,address,area,category,gstin,remark});
+ let r=await q.select();if(r.error){let msg=String(r.error.message||'');if(/duplicate|unique/i.test(msg))toast('DUPLICATE CUSTOMER CODE — '+code+' already exists');else toast('Customer save failed: '+msg);return}await refreshCustomers();clearCustomerMaster();toast(editing?'Customer updated':'Customer saved');
+}
+function masterUppercaseInit(){
+ ['mItemCode','mItemName','mItemBrand','mCustCode','mCustName','mCustAddress','mCustArea','mCustGSTIN','mCustRemark'].forEach(id=>{
+  let e=$(id);if(!e||e.dataset.upperBound)return;e.dataset.upperBound='1';
+  e.style.textTransform='uppercase';
+  e.addEventListener('input',()=>{let a=e.selectionStart,b=e.selectionEnd;e.value=e.value.toUpperCase();try{e.setSelectionRange(a,b)}catch(_){}});
+ });
+}
+document.addEventListener('DOMContentLoaded',masterUppercaseInit);
+function showItemMatches(v){let box=$('itemMatches');if(!box)return;let q=String(v||'').trim();let list=db.items.filter(i=>smartMatch(q,i.code,i.name,i.brand,i.product)).slice(0,20);box.innerHTML=list.map(i=>`<div onclick="pickItemCode('${i.code}')"><b>${i.code}</b> — ${i.name}</div>`).join('');box.style.display=list.length?'block':'none'}
+function pickItemCode(code){$('manualCode').value=code;$('itemMatches').style.display='none';$('manualQty').focus()}
+function pickFirstCustomerMatch(){let s=$('posCustomer');if(s&&s.options.length>1){s.selectedIndex=1;renderBill()}}
+function renderSavedBillDateList(){let el=$('savedBillDateList');if(!el)return;let d=$('savedBillDate')?.value||'';if(!d){el.innerHTML='Choose a date to list invoices.';return}let list=db.bills.filter(b=>localDateFrom(b.at)===d);el.innerHTML=list.length?list.map(b=>`<div style="margin:5px 0"><span class="clicklink" onclick="openBill(false,'${b.bill}')">${b.bill}</span> • ${b.customerName} • ${money(b.total)} • Bal ${money(Math.max(0,b.total-b.paidAmount))} • ${b.status||'ACTIVE'}</div>`).join(''):'No invoices on this date.'}
+function localDateFrom(v){let d=new Date(v);let y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`}
+async function recordCustomerPayment(){
+ let btn=document.querySelector('button[onclick="recordCustomerPayment()"]');
+ if(btn?.dataset.saving==='1')return;
+ let c=historyCustomerCode?db.customers.find(x=>x.code===historyCustomerCode):currentCustomer();
+ if(!c){toast('Customer account not found');return}
+ let cash=+$('ledgerCashAmount').value||0,online=+$('ledgerOnlineAmount').value||0,amount=+(cash+online).toFixed(2),ref=$('ledgerPayRef').value.trim();
+ if(cash<0||online<0){toast('Receipt amount cannot be negative');return}
+ if(amount<=0){toast('Enter Cash and/or Online amount');return}
+ let liveLedger=await fetchCustomerLedger(c.code);
+ let bal=liveLedger.length?Math.max(0,Number(liveLedger[liveLedger.length-1].running_balance||0)):Math.max(0,customerBalance(c.code));
+ let excess=Math.max(0,+(amount-bal).toFixed(2));
+
+ // Prevent accidental double receipt while the first save is still running.
+ if(btn){btn.dataset.saving='1';btn.disabled=true;btn.textContent='Saving…'}
+ toast('Saving payment…');
+ try{
+   let r=await sb.rpc('pos_record_customer_payment_split',{
+     p_token:sessionToken,p_customer_code:c.code,p_cash_amount:cash,p_online_amount:online,
+     p_reference:ref||null,p_note:'Balance payment',p_received_at:new Date().toISOString()
+   });
+   if(r.error){toast('Balance payment failed: '+r.error.message);return}
+
+   // Clear entered money immediately so the same receipt cannot be sent again accidentally.
+   $('ledgerCashAmount').value=0;$('ledgerOnlineAmount').value=0;$('ledgerPayAmount').value=0;
+   $('ledgerPayTotal').textContent=money(0);$('ledgerPayRef').value='';
+
+   // Refresh server ledger first, then balances/report/bill so saved receipt is visible immediately.
+   await showCustomerHistoryByCode(c.code,c.name,c.mobile);
+   await loadBalances();
+   renderBill();
+   if(typeof loadCustomerSalesReport==='function' && $('crRows')) {
+     try{await loadCustomerSalesReport()}catch(_){}
+   }
+   toast(excess>0?'Payment saved • '+money(excess)+' added to Customer Credit':'Payment saved • Outstanding updated');
+ } finally {
+   if(btn){btn.dataset.saving='0';btn.disabled=false;btn.textContent='Save Balance Payment'}
+ }
+}
+let historyCustomerCode='';
+async function fetchCustomerLedger(code){
+ let r=await sb.rpc('pos_get_customer_ledger',{p_token:sessionToken,p_customer_code:code});
+ if(r.error){toast('Ledger load failed: '+r.error.message);return []}
+ return r.data||[]
+}
+async function receiveBalanceFromBill(billNo){
+ let b=db.bills.find(x=>x.bill===billNo);
+ if(!b||!b.customerCode){toast('Customer account not available');return}
+ await showCustomerHistoryByCode(b.customerCode,b.customerName,b.customerMobile);
+ let ledger=await fetchCustomerLedger(b.customerCode);
+ let bal=ledger.length?Number(ledger[ledger.length-1].running_balance||0):customerBalance(b.customerCode);
+ $('ledgerBalance').textContent=money(bal);
+ $('ledgerCashAmount').value='';
+ $('ledgerOnlineAmount').value='';
+ $('ledgerReference').value='';
+ syncLedgerPayment();
+ setTimeout(()=>{let el=$('ledgerCashAmount');if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.focus()}},80);
+}
+async function showBillCustomerHistory(billNo){
+ let b=db.bills.find(x=>x.bill===billNo);if(!b||!b.customerCode){toast('This bill has no customer account');return}
+ await showCustomerHistoryByCode(b.customerCode,b.customerName,b.customerMobile)
+}
+async function showCustomerHistory(){
+ let c=currentCustomer();if(!c)return;
+ await showCustomerHistoryByCode(c.code,c.name,c.mobile)
+}
+async function showCustomerHistoryByCode(code,name='',mobile=''){
+ historyCustomerCode=String(code||'').trim().toUpperCase();if(!historyCustomerCode)return;
+ let list=db.bills.filter(b=>b.customerCode===historyCustomerCode||(mobile&&b.customerMobile===mobile));
+ let ledger=await fetchCustomerLedger(historyCustomerCode);
+ let bal=ledger.length?Math.max(0,Number(ledger[ledger.length-1].running_balance||0)):Math.max(0,customerBalance(historyCustomerCode));
+ $('historyModalTitle').textContent=`${name||historyCustomerCode} • Balance / Ledger`;
+ $('ledgerBalance').textContent=money(bal);
+ $('customerHistoryRows').innerHTML=list.map(b=>`<tr><td><span class="clicklink" onclick="closeHistoryModal();openBill(false,'${b.bill}')">${b.bill}</span></td><td>${new Date(b.at).toLocaleString()}</td><td>${money(b.total)}</td><td>${money(b.paidAmount)}</td><td>${money(b.balanceAmount??Math.max(0,b.total-b.paidAmount))}</td><td>${b.status||'ACTIVE'}</td><td><button class="btn secondary" onclick="closeHistoryModal();openBill(false,'${b.bill}')">Open</button></td></tr>`).join('')||'<tr><td colspan="7">No previous bills</td></tr>';
+ $('customerLedgerRows').innerHTML=ledger.map(x=>`<tr><td>${new Date(x.entry_at).toLocaleString()}</td><td>${x.entry_type}</td><td>${x.reference_no||''}</td><td>${money(x.debit)}</td><td>${money(x.credit)}</td><td><b>${money(x.running_balance)}</b></td></tr>`).join('')||'<tr><td colspan="6">No ledger entries</td></tr>';
+ $('historyModal').classList.add('open')
+}
+function closeHistoryModal(){$('historyModal').classList.remove('open')}
+
+function addSchemeSlab(target='',reward=''){let box=$('schemeSlabs');let d=document.createElement('div');d.className='row schemeSlab';d.innerHTML=`<div><input class="slabTarget" type="number" min="0.01" step="0.01" placeholder="Target ₹" value="${target}"></div><div><input class="slabReward" placeholder="Reward / Gift" value="${reward}"></div><button class="btn red" type="button" onclick="this.parentElement.remove()">×</button>`;box.appendChild(d)}
+function renderSchemeOptions(){if(!$('schemeSelect'))return;let old=$('schemeSelect').value;$('schemeSelect').innerHTML='<option value="">Select Scheme</option>'+db.schemes.map(s=>`<option value="${s.id}">${s.scheme_code||''} • ${s.scheme_name} • ${s.from_date} to ${s.to_date}</option>`).join('');if([...$('schemeSelect').options].some(o=>o.value===old))$('schemeSelect').value=old}
+async function saveScheme(){let name=$('schemeName').value.trim(),fr=$('schemeFrom').value,to=$('schemeTo').value;let slabs=[...document.querySelectorAll('.schemeSlab')].map(r=>({target_amount:+r.querySelector('.slabTarget').value||0,reward_description:r.querySelector('.slabReward').value.trim()})).filter(x=>x.target_amount>0);if(!name||!fr||!to||!slabs.length){toast('Scheme name, dates and at least one slab required');return}slabs.sort((a,b)=>a.target_amount-b.target_amount);let r=await sb.rpc('pos_create_scheme',{p_token:sessionToken,p_scheme_name:name,p_from_date:fr,p_to_date:to,p_slabs:slabs});if(r.error){toast(r.error.message);return}$('schemeSaveMsg').textContent='Scheme saved • '+r.data;toast('Scheme saved • '+r.data);$('schemeName').value='';$('schemeSlabs').innerHTML='';addSchemeSlab();await loadRemote()}
+async function loadSchemeReport(){if(!$('schemeReportRows'))return;let id=+$('schemeSelect').value||0;if(!id){schemeReportData=[];renderSchemeReport();return}let r=await sb.rpc('pos_scheme_customer_report_v2',{p_token:sessionToken,p_scheme_id:id});if(r.error){schemeReportData=[];$('schemeReportRows').innerHTML=`<tr><td colspan="8">${r.error.message}</td></tr>`;return}schemeReportData=r.data||[];renderSchemeReport()}
+function renderSchemeReport(){let q=String($('schemeCustomerSearch')?.value||'').replace(/\D/g,'');let rows=schemeReportData.filter(x=>smartMatch(q,x.mobile,x.customer_name,x.customer_code));$('schemeReportRows').innerHTML=rows.map(x=>`<tr><td>${x.customer_code} — ${x.customer_name}</td><td>${x.mobile||''}</td><td>${money(x.total_purchase)}</td><td>${money(x.excluded_value)}</td><td><b>${money(x.eligible_purchase)}</b></td><td>${x.achieved_reward||'-'}</td><td>${x.next_target?money(x.next_target):'-'}</td><td>${x.next_target?'RUNNING':'MAX SLAB'}</td></tr>`).join('')||'<tr><td colspan="8">No matching purchase</td></tr>'}
+function downloadSchemeReportXLS(){if(!schemeReportData.length){toast('Load a scheme report first');return}let q=String($('schemeCustomerSearch')?.value||'').replace(/\D/g,'');let rows=schemeReportData.filter(x=>smartMatch(q,x.mobile,x.customer_name,x.customer_code)).map(x=>({CustomerCode:x.customer_code,CustomerName:x.customer_name,Mobile:x.mobile,TotalPurchase:x.total_purchase,ExcludedValue:x.excluded_value,EligiblePurchase:x.eligible_purchase,AchievedReward:x.achieved_reward||'',NextTarget:x.next_target||'',NextReward:x.next_reward||''}));let ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Scheme Report');XLSX.writeFile(wb,'ABS_Scheme_Report.xlsx')}
+async function loadBikeGuru(){let [m,n]=await Promise.all([sb.from('bike_guru_members').select('*').order('created_at',{ascending:false}),sb.from('pos_admin_notifications').select('*').eq('notification_type','BIKE_GURU_REDEMPTION').order('created_at',{ascending:false}).limit(50)]);if(!m.error){db.bikeGuru=m.data||[];renderBikeGuruMembers()}if($('bgNotifications'))$('bgNotifications').innerHTML=(n.data||[]).map(x=>`<div>🔔 ${x.message} • ${new Date(x.created_at).toLocaleString()}</div>`).join('')||'No redemption notifications';await loadBikeGuruPinResetRequests()}
+
+
+
+let bgMarketing=[];
+function populateBgMarketingItems(){let e=$('bgMkItem');if(!e)return;let keep=e.value;e.innerHTML='<option value="">No specific item</option>'+[...(db.items||[])].sort((a,b)=>String(a.code).localeCompare(String(b.code))).map(i=>`<option value="${i.code}">${i.code} • ${i.name||''}</option>`).join('');e.value=keep;}
+async function loadBgMarketing(){
+ if(currentUser?.role!=='ADMIN'||!$('bgMkRows'))return;populateBgMarketingItems();
+ let r=await sb.rpc('bike_guru_admin_marketing_posts',{p_token:sessionToken});
+ if(r.error){$('bgMkRows').innerHTML=`<tr><td colspan="7">${r.error.message}</td></tr>`;return}
+ bgMarketing=r.data||[];$('bgMkRows').innerHTML=bgMarketing.map(x=>`<tr><td>${x.post_type}</td><td><b>${x.title}</b><div class="tiny">${x.item_code||''}</div></td><td>${x.target_type}</td><td>${new Date(x.valid_from).toLocaleDateString()} – ${new Date(x.valid_to).toLocaleDateString()}</td><td>${x.lead_count||0}</td><td>${x.active?'Published':'Hidden'}</td><td><button class="btn secondary" onclick="toggleBgMarketing(${x.id},${!x.active})">${x.active?'Hide':'Publish'}</button> <button class="btn secondary" onclick="viewBgMarketingLeads(${x.id})">Leads</button></td></tr>`).join('')||'<tr><td colspan="7">No marketing posts</td></tr>';
+}
+
+function previewBgMarketingImage(inp){
+ let f=inp.files?.[0],box=$('bgMkImagePreview');if(!f){box.innerHTML='No picture selected';return}
+ if(!f.type.startsWith('image/')){toast('Please select an image');inp.value='';return}
+ if(f.size>5*1024*1024){toast('Image must be under 5 MB');inp.value='';return}
+ let u=URL.createObjectURL(f);box.innerHTML=`<img src="${u}" style="max-width:220px;max-height:140px;object-fit:cover;border-radius:8px"><div>${f.name}</div>`;
+}
+async function uploadBgMarketingImage(){
+ let f=$('bgMkImageFile')?.files?.[0];if(!f)return null;
+ let ext=(f.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
+ let name=`marketing/${Date.now()}_${Math.random().toString(36).slice(2,9)}.${ext}`;
+ let up=await sb.storage.from('bike-guru-media').upload(name,f,{cacheControl:'3600',upsert:false,contentType:f.type});
+ if(up.error)throw new Error(up.error.message);
+ let pub=sb.storage.from('bike-guru-media').getPublicUrl(name);
+ return pub.data.publicUrl;
+}
+
+async function saveBgMarketing(){
+ let f=$('bgMkFrom').value,t=$('bgMkTo').value,title=$('bgMkTitle').value.trim();
+ if(!title||!f||!t){toast('Title, From and To required');return}
+ let imageUrl=null;try{imageUrl=await uploadBgMarketingImage()}catch(e){toast('Picture upload failed: '+e.message);return}
+ let r=await sb.rpc('bike_guru_admin_save_marketing_post',{p_token:sessionToken,p_post_type:$('bgMkType').value,p_title:title,p_description:$('bgMkDesc').value.trim()||null,p_item_code:$('bgMkItem').value||null,p_image_url:imageUrl,p_valid_from:new Date(f).toISOString(),p_valid_to:new Date(t).toISOString(),p_target_type:$('bgMkTarget').value,p_priority:Number($('bgMkPriority').value)||0});
+ if(r.error){toast(r.error.message);return}toast('Promotion published');$('bgMkTitle').value='';$('bgMkDesc').value='';$('bgMkImageFile').value='';$('bgMkImagePreview').innerHTML='No picture selected';await loadBgMarketing();
+}
+async function toggleBgMarketing(id,active){let r=await sb.rpc('bike_guru_admin_toggle_marketing_post',{p_token:sessionToken,p_post_id:id,p_active:active});if(r.error){toast(r.error.message);return}await loadBgMarketing();}
+async function viewBgMarketingLeads(id){let r=await sb.rpc('bike_guru_admin_marketing_leads',{p_token:sessionToken,p_post_id:id});if(r.error){toast(r.error.message);return}let a=r.data||[];alert(a.length?a.map(x=>`${new Date(x.created_at).toLocaleString()} • ${x.member_name} • ${x.mobile} • ${x.garage_name||''}`).join('\\n'):'No leads yet');}
+async function loadBikeGuruMarketingFeed(){
+ if(!bikeGuruSession||!$('bgpMarketingFeed'))return;
+ let r=await sb.rpc('bike_guru_my_marketing_feed',{p_session_token:bikeGuruSession});if(r.error){$('bgpMarketingFeed').innerHTML='';return}
+ let a=r.data||[],hero=a[0];$('bgpPromoHero').innerHTML=hero?`<div style="padding:12px;border:1px solid #ddd;border-radius:10px">${hero.image_url?`<img src="${hero.image_url}" style="width:100%;max-height:220px;object-fit:cover;border-radius:8px">`:''}<div class="tiny">${hero.post_type.replaceAll('_',' ')}</div><h2>${hero.title}</h2><div>${hero.description||''}</div>${hero.item_code?`<div class="tiny">Item: ${hero.item_code}</div>`:''}<button class="btn green" onclick="bikeGuruMarketingInterest(${hero.id})">Interested / Enquire</button></div>`:'<div class="muted">No current updates</div>';
+ $('bgpMarketingFeed').innerHTML=a.slice(1).map(x=>`<div class="card">${x.image_url?`<img src="${x.image_url}" style="width:100%;max-height:150px;object-fit:cover;border-radius:7px">`:''}<div class="tiny">${x.post_type.replaceAll('_',' ')}</div><b>${x.title}</b><div>${x.description||''}</div>${x.item_code?`<div class="tiny">Item: ${x.item_code}</div>`:''}<button class="btn secondary" onclick="bikeGuruMarketingInterest(${x.id})">Interested / Enquire</button></div>`).join('');
+}
+async function bikeGuruMarketingInterest(id){let r=await sb.rpc('bike_guru_marketing_interest',{p_session_token:bikeGuruSession,p_post_id:id});if(r.error){toast(r.error.message);return}toast('Interest sent to ABS');}
+
+let bgPointValues=[];
+async function loadBgPointValues(){if(currentUser?.role!=='ADMIN'||!$('bgPvRows'))return;let r=await sb.rpc('bike_guru_admin_point_values',{p_token:sessionToken});if(r.error){$('bgPvRows').innerHTML=`<tr><td colspan="6">${r.error.message}</td></tr>`;return}bgPointValues=r.data||[];$('bgPvRows').innerHTML=bgPointValues.map(x=>`<tr><td>${x.scheme_name||'-'}</td><td>${new Date(x.valid_from).toLocaleString()}</td><td>${new Date(x.valid_to).toLocaleString()}</td><td>₹${Number(x.rupees_per_point).toFixed(2)}</td><td>${x.active?'Active':'Inactive'}</td><td><button class="btn secondary" onclick="toggleBgPointValue(${x.id},${!x.active})">${x.active?'Disable':'Enable'}</button></td></tr>`).join('')||'<tr><td colspan="6">No point-value periods</td></tr>';}
+async function saveBgPointValue(){let f=$('bgPvFrom').value,t=$('bgPvTo').value,rate=Number($('bgPvRate').value),name=$('bgPvName').value.trim();if(!f||!t||!(rate>0)){toast('From, To and ₹ per Point required');return}let r=await sb.rpc('bike_guru_admin_save_point_value',{p_token:sessionToken,p_scheme_name:name||null,p_valid_from:new Date(f).toISOString(),p_valid_to:new Date(t).toISOString(),p_rupees_per_point:rate});if(r.error){toast(r.error.message);return}toast('Point value period saved');$('bgPvName').value='';await loadBgPointValues();}
+async function toggleBgPointValue(id,active){let r=await sb.rpc('bike_guru_admin_toggle_point_value',{p_token:sessionToken,p_id:id,p_active:active});if(r.error){toast(r.error.message);return}await loadBgPointValues();}
+
+let bgRedemptions=[];
+async function loadBgRedemptions(){
+ if(currentUser?.role!=='ADMIN'||!$('bgRedRows'))return;
+ let r=await sb.rpc('bike_guru_admin_redemptions',{p_token:sessionToken,p_status:$('bgRedStatus')?.value||null});
+ if(r.error){$('bgRedRows').innerHTML=`<tr><td colspan="8">${r.error.message}</td></tr>`;return}
+ bgRedemptions=r.data||[];renderBgRedemptions();
+
+ loadBgPointValues();
+
+ loadBgMarketing();
+}
+function renderBgRedemptions(){
+ if(!$('bgRedRows'))return;let q=($('bgRedSearch')?.value||'').trim().toLowerCase();
+ let a=bgRedemptions.filter(x=>smartMatch(q,x.member_name,x.mobile,x.garage_name));
+ $('bgRedRows').innerHTML=a.map(x=>`<tr><td>${new Date(x.request_at).toLocaleString()}</td><td><b>${x.member_name}</b><div class="tiny">${x.garage_name||''}</div></td><td>${x.mobile}</td><td>${x.points}</td><td>₹${Number(x.amount||0).toFixed(2)}</td><td>${x.redemption_mode||'-'}</td><td><b>${x.status}</b></td><td><button class="btn secondary" onclick="openBgRedemption(${x.redemption_id})">Open</button></td></tr>`).join('')||'<tr><td colspan="8">No redemption requests</td></tr>';
+}
+async function openBgRedemption(id){
+ let x=bgRedemptions.find(z=>Number(z.redemption_id)===Number(id));if(!x)return;
+ let custOptions=(db.customers||[]).map(c=>`<option value="${c.code}" ${c.code===x.pos_customer_code?'selected':''}>${c.code} • ${c.name}</option>`).join('');
+ $('bgRedDetail').innerHTML=`<div class="grid"><div><b>${x.member_name}</b><div>${x.garage_name||''}</div><div>${x.mobile}</div><div>Bike Guru #${x.member_id}</div></div><div>Points: <b>${x.points}</b><br>Value: <b>₹${Number(x.amount||0).toFixed(2)}</b><br>Status: <b>${x.status}</b><br>UPI: ${x.upi_id||'-'}</div></div>
+ <div class="divider"></div><label>Redemption Mode</label><select id="bgRedMode"><option value="UPI" ${x.redemption_mode==='UPI'?'selected':''}>UPI Payment</option><option value="POS_CREDIT" ${x.redemption_mode==='POS_CREDIT'?'selected':''}>POS Customer Credit</option></select>
+ <label>POS Customer (required for POS Credit)</label><select id="bgRedCustomer"><option value="">Select Customer</option>${custOptions}</select>
+ <label>Settlement / Reference</label><input id="bgRedRef" value="${x.settlement_ref||''}" placeholder="UPI ref / remark">
+ <div class="row" style="margin-top:10px"><button class="btn green" onclick="settleBgRedemption(${id})">Approve & Settle</button><button class="btn red" onclick="rejectBgRedemption(${id})">Reject</button></div>
+ <div class="divider"></div><h3>Member Summary</h3><div>Total earned: <b>${x.total_points||0}</b> • Redeemed/Reserved: <b>${x.redeemed_points||0}</b> • Available: <b>${x.available_points||0}</b></div>`;
+ $('bgRedModal').classList.remove('hidden');
+}
+async function settleBgRedemption(id){
+ let mode=$('bgRedMode').value,customer=$('bgRedCustomer').value||null,ref=$('bgRedRef').value.trim()||null;
+ if(mode==='POS_CREDIT'&&!customer){toast('Select POS customer for credit');return}
+ let r=await sb.rpc('bike_guru_admin_settle_redemption',{p_token:sessionToken,p_redemption_id:id,p_mode:mode,p_customer_code:customer,p_reference:ref});
+ if(r.error){toast(r.error.message);return}
+ toast(mode==='POS_CREDIT'?'POS customer credit added':'Redemption settled');$('bgRedModal').classList.add('hidden');await loadBgRedemptions();loadBikeGuru();
+}
+async function rejectBgRedemption(id){
+ let reason=prompt('Rejection reason');if(reason===null)return;
+ let r=await sb.rpc('bike_guru_admin_reject_redemption',{p_token:sessionToken,p_redemption_id:id,p_reason:reason});
+ if(r.error){toast(r.error.message);return}toast('Redemption rejected');$('bgRedModal').classList.add('hidden');await loadBgRedemptions();
+}
+
+function populateBgRewardItems(){
+ let el=$('bgRewardItem');if(!el)return;
+ let keep=el.value;
+ el.innerHTML='<option value="">Select Item</option>'+[...(db.items||[])].sort((a,b)=>String(a.code).localeCompare(String(b.code))).map(i=>`<option value="${i.code}">${i.code} • ${i.name||''}</option>`).join('');
+ if(keep&&db.items.some(i=>i.code===keep))el.value=keep;
+ if(!$('bgRewardRows').children.length)addBgRewardRow('', '', false);
+
+ loadBgRedemptions();
+}
+function addBgRewardRow(points='',pct='',balance=false){
+ let tb=$('bgRewardRows');if(!tb)return;
+ let tr=document.createElement('tr');
+ tr.innerHTML=`<td><input class="bgrp" type="number" min="0" step="0.01" value="${points}"></td><td><input class="bgpct" type="number" min="0" max="100" step="0.01" value="${pct}" ${balance?'disabled':''}></td><td style="text-align:center"><input class="bgbal" type="checkbox" ${balance?'checked':''} onchange="bgRewardBalanceChanged(this)"></td><td><button class="btn red" onclick="this.closest('tr').remove();updateBgRewardSummary()">×</button></td>`;
+ tb.appendChild(tr);updateBgRewardSummary();
+}
+function bgRewardBalanceChanged(cb){
+ if(cb.checked){document.querySelectorAll('#bgRewardRows .bgbal').forEach(x=>{if(x!==cb)x.checked=false});}
+ document.querySelectorAll('#bgRewardRows tr').forEach(tr=>{let bal=tr.querySelector('.bgbal').checked,p=tr.querySelector('.bgpct');p.disabled=bal;if(bal)p.value='';});
+ updateBgRewardSummary();
+}
+function readBgRewardRows(){
+ return [...document.querySelectorAll('#bgRewardRows tr')].map((tr,n)=>({slab_no:n+1,reward_points:Number(tr.querySelector('.bgrp').value),percentage:tr.querySelector('.bgbal').checked?null:Number(tr.querySelector('.bgpct').value),is_balance:tr.querySelector('.bgbal').checked}));
+}
+function updateBgRewardSummary(){
+ if(!$('bgRewardSummary'))return;
+ let a=readBgRewardRows(),fixed=a.filter(x=>!x.is_balance).reduce((z,x)=>z+(Number.isFinite(x.percentage)?x.percentage:0),0),bal=a.filter(x=>x.is_balance).length;
+ $('bgRewardSummary').textContent=`Fixed %: ${fixed.toFixed(2)}% • Balance: ${bal?'Yes ('+Math.max(0,100-fixed).toFixed(2)+'%)':'No'}`;
+}
+async function loadBgRewardDefinition(){
+ let code=$('bgRewardItem').value;$('bgRewardRows').innerHTML='';if(!code){addBgRewardRow();return}
+ let r=await sb.rpc('bike_guru_admin_get_reward_definition',{p_token:sessionToken,p_item_code:code});
+ if(r.error){toast(r.error.message);addBgRewardRow();return}
+ let rows=r.data||[];$('bgRewardActive').value=String(rows.length?rows[0].active:true);
+ if(!rows.length){addBgRewardRow();return}
+ rows.forEach(x=>addBgRewardRow(x.reward_points,x.percentage??'',x.is_balance));
+ updateBgRewardSummary();
+}
+async function saveBgRewardDefinition(){
+ if(currentUser?.role!=='ADMIN'){toast('Admin only');return}
+ let code=$('bgRewardItem').value;if(!code){toast('Select Item Code');return}
+ let rows=readBgRewardRows();if(!rows.length){toast('Add at least one reward slab');return}
+ if(rows.some(x=>!Number.isFinite(x.reward_points)||x.reward_points<0)){toast('Valid reward points required');return}
+ let balances=rows.filter(x=>x.is_balance).length,fixed=rows.filter(x=>!x.is_balance).reduce((z,x)=>z+x.percentage,0);
+ if(balances!==1){toast('Exactly one Balance slab required');return}
+ if(rows.some(x=>!x.is_balance&&(!Number.isFinite(x.percentage)||x.percentage<0))||fixed>=100.000001){toast('Fixed percentage must be below 100%');return}
+ let r=await sb.rpc('bike_guru_admin_save_reward_definition',{p_token:sessionToken,p_item_code:code,p_active:$('bgRewardActive').value==='true',p_slabs:rows});
+ if(r.error){toast(r.error.message);return}
+ toast('Reward definition saved');await loadBgRewardDefinition();
+}
+async function getBgRewardDefinitionForQR(code){
+ let r=await sb.rpc('bike_guru_get_active_reward_definition',{p_token:sessionToken,p_item_code:code});
+ if(r.error)throw new Error(r.error.message);
+ return r.data||[];
+}
+function allocateBgRewards(qty,slabs){
+ if(!slabs.length)return Array(qty).fill(null);
+ let balance=slabs.find(x=>x.is_balance),fixed=slabs.filter(x=>!x.is_balance),out=[];
+ fixed.forEach(x=>{let n=Math.floor(qty*Number(x.percentage)/100);for(let i=0;i<n;i++)out.push(Number(x.reward_points));});
+ while(out.length<qty)out.push(Number(balance.reward_points));
+ while(out.length>qty)out.pop();
+ for(let i=out.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[out[i],out[j]]=[out[j],out[i]]}
+ return out;
+}
+
+async function loadBikeGuruByMobile(){let mobile=$('bgMobile').value.trim(),d=mobile.replace(/\D/g,'').slice(-10);if(d.length<10)return;let x=(db.bikeGuru||[]).find(m=>String(m.mobile||'').replace(/\D/g,'').slice(-10)===d);if(x){$('bgName').value=x.member_name;$('bgName').readOnly=true;$('bgType').value=x.member_type||'MECHANIC';$('bgType').disabled=true;$('bgGarage').value=x.garage_name||'';$('bgPan').value=x.pan_number||'';$('bgUpi').value=x.upi_id||'';$('bgAddress').value=x.address||'';toast('Existing Bike Guru loaded — name/type locked')}else{$('bgName').readOnly=false;$('bgType').disabled=false}}
+function renderBikeGuruMembers(){if(!$('bgRows'))return;let q=String($('bgSearch')?.value||'').toLowerCase();let list=(db.bikeGuru||[]).filter(x=>smartMatch(q,x.mobile,x.member_name,x.garage_name,x.member_type));$('bgRows').innerHTML=list.map(x=>`<tr><td>${x.mobile}</td><td>${x.member_type||''}</td><td>${x.member_name}</td><td>${x.garage_name||''}</td><td>${x.total_points||0}</td><td>${x.redeemed_points||0}</td><td><b>${Math.max(0,(x.total_points||0)-(x.redeemed_points||0))}</b></td><td><button class="btn green" onclick="requestBikeGuruRedeem(${x.id},'${String(x.member_name).replace(/'/g,"\'")}')">Redeem</button></td></tr>`).join('')||'<tr><td colspan="8">No Bike Guru registrations</td></tr>'}
+async function saveBikeGuruMember(){let mobile=$('bgMobile').value.trim(),member_name=$('bgName').value.trim(),member_type=$('bgType').value,garage_name=$('bgGarage').value.trim(),pan_number=$('bgPan').value.trim().toUpperCase(),upi_id=$('bgUpi').value.trim(),address=$('bgAddress').value.trim();if(mobile.replace(/\D/g,'').length<10||!member_name){toast('Valid mobile and name required');return}let r=await sb.rpc('bike_guru_register_member',{p_token:sessionToken,p_mobile:mobile,p_member_name:member_name,p_member_type:member_type,p_garage_name:garage_name,p_pan_number:pan_number||null,p_upi_id:upi_id||null,p_address:address||null});if(r.error){toast(r.error.message);return}toast('Bike Guru saved');['bgMobile','bgName','bgGarage','bgPan','bgUpi','bgAddress'].forEach(id=>$(id).value='');$('bgName').readOnly=false;$('bgType').disabled=false;await loadBikeGuru()}
+async function requestBikeGuruRedeem(id,name){let pts=Number(prompt(`Redeem points for ${name}`));if(!(pts>0))return;let r=await sb.rpc('bike_guru_request_redemption',{p_token:sessionToken,p_member_id:id,p_points:pts});if(r.error){toast(r.error.message);return}toast('Redemption request submitted');await loadBikeGuru()}
+
+const BG_SESSION_KEY='abs_bike_guru_session';
+let bikeGuruSession=localStorage.getItem(BG_SESSION_KEY)||'',bikeGuruPortalMember=null;
+function bgPortalPanel(id){['bgPortalLogin','bgPortalRegister','bgPortalForgot','bgPortalDash'].forEach(x=>$(x)?.classList.toggle('hidden',x!==id))}
+function showBikeGuruPortal(){if($('loginOverlay'))$('loginOverlay').style.display='none';$('bgPortal').style.display='flex';bgPortalPanel('bgPortalLogin')}
+function closeBikeGuruPortal(){$('bgPortal').style.display='none';showLogin()}
+function showBikeGuruRegistration(){bgPortalPanel('bgPortalRegister')}
+function showBikeGuruForgotPin(){bgPortalPanel('bgPortalForgot')}
+function bgMobile(v){return String(v||'').replace(/\D/g,'').slice(-10)}
+function bgPinOK(v){return /^\d{4,6}$/.test(String(v||''))}
+async function bikeGuruSelfRegister(){
+ let mobile=bgMobile($('bgrMobile').value),pin=$('bgrPin').value,pin2=$('bgrPin2').value,name=$('bgrName').value.trim();
+ if(mobile.length!==10||!name){$('bgrMsg').textContent='Valid mobile and name required';return}
+ if(!bgPinOK(pin)){ $('bgrMsg').textContent='PIN must be 4–6 digits';return}
+ if(pin!==pin2){$('bgrMsg').textContent='PIN confirmation does not match';return}
+ let r=await sb.rpc('bike_guru_self_register',{p_mobile:mobile,p_pin:pin,p_member_name:name,p_member_type:$('bgrType').value,p_garage_name:$('bgrGarage').value.trim()||null,p_pan_number:$('bgrPan').value.trim().toUpperCase()||null,p_upi_id:$('bgrUpi').value.trim()||null,p_address:$('bgrAddress').value.trim()||null});
+ $('bgrMsg').textContent=r.error?r.error.message:'Registration complete. Login with mobile + PIN.';
+ if(!r.error){$('bgpMobile').value=mobile;setTimeout(()=>showBikeGuruPortal(),500)}
+
+ populateBgRewardItems();
+}
+async function bikeGuruPortalLogin(){
+ let mobile=bgMobile($('bgpMobile').value),pin=$('bgpPin').value;if(mobile.length!==10||!bgPinOK(pin)){$('bgpMsg').textContent='Enter valid mobile and PIN';return}
+ let r=await sb.rpc('bike_guru_login',{p_mobile:mobile,p_pin:pin});if(r.error||!r.data?.length){$('bgpMsg').textContent=r.error?.message||'Invalid mobile/PIN';return}
+ let x=r.data[0];bikeGuruSession=x.session_token;localStorage.setItem(BG_SESSION_KEY,bikeGuruSession);bikeGuruPortalMember=x;await loadBikeGuruPortalDashboard()
+}
+async function loadBikeGuruPortalDashboard(){
+ if(!bikeGuruSession)return;
+ let r=await sb.rpc('bike_guru_my_dashboard',{p_session_token:bikeGuruSession});
+ if(r.error||!r.data?.length){localStorage.removeItem(BG_SESSION_KEY);bikeGuruSession='';$('bgpMsg').textContent=r.error?.message||'Session expired';bgPortalPanel('bgPortalLogin');return}
+ let x=r.data[0];bikeGuruPortalMember=x;bgPortalPanel('bgPortalDash');
+ $('bgpWho').textContent=`${x.member_name} • ${x.member_type} • Bike Guru #${x.member_id}`;
+ $('bgpGarage').textContent=x.garage_name||'';
+ $('bgpTotal').textContent=Number(x.total_points||0);$('bgpRedeemed').textContent=Number(x.redeemed_points||0);$('bgpAvailable').textContent=Number(x.available_points||0);
+ $('bgpForcePin').classList.toggle('hidden',!x.must_change_pin);
+ $('bgpProfileMobile').value=x.mobile||'';$('bgpProfileType').value=x.member_type||'';$('bgpProfileName').value=x.member_name||'';$('bgpProfileGarage').value=x.garage_name||'';$('bgpProfilePan').value=x.pan_number||'';$('bgpProfileUpi').value=x.upi_id||'';$('bgpProfileAddress').value=x.address||'';
+ let [rr,sc]=await Promise.all([sb.rpc('bike_guru_my_redemptions',{p_session_token:bikeGuruSession}),sb.rpc('bike_guru_my_scans',{p_session_token:bikeGuruSession})]);
+ $('bgpRedemptions').innerHTML=rr.error?rr.error.message:((rr.data||[]).map(z=>`<div style="padding:5px 0;border-bottom:1px solid #eee">${new Date(z.request_at).toLocaleDateString()} • ${z.points} pts • ₹${Number(z.amount||0).toFixed(2)} • <b>${z.status}</b>${z.settlement_ref?' • '+z.settlement_ref:''}</div>`).join('')||'No redemption history');
+ $('bgpScans').innerHTML=sc.error?`<tr><td colspan="4">${sc.error.message}</td></tr>`:((sc.data||[]).map(z=>`<tr><td>${new Date(z.entry_at).toLocaleString()}</td><td>${z.item_code||''}</td><td>${z.qr_serial||''}</td><td><b>+${Number(z.points||0)}</b></td></tr>`).join('')||'<tr><td colspan="4">No scans</td></tr>');
+ await loadBikeGuruMarketingFeed();
+}
+async function bikeGuruScanQr(){let q=$('bgpQr').value.trim();if(!q){$('bgpScanMsg').textContent='Scan or enter QR';return}let r=await sb.rpc('bike_guru_scan_qr',{p_session_token:bikeGuruSession,p_qr:q});if(r.error){$('bgpScanMsg').textContent=r.error.message;return}$('bgpScanMsg').textContent=`${Number(r.data||0)} points added`;$('bgpQr').value='';await loadBikeGuruPortalDashboard()}
+let bgCameraScanner=null;
+async function startBikeGuruCamera(){if(typeof Html5Qrcode==='undefined'){toast('Camera scanner library not available');return}try{if(bgCameraScanner)await bgCameraScanner.stop().catch(()=>{});$('bgpCamera').innerHTML='';bgCameraScanner=new Html5Qrcode('bgpCamera');await bgCameraScanner.start({facingMode:'environment'},{fps:10,qrbox:{width:220,height:220}},async text=>{if(!text)return;$('bgpQr').value=String(text).trim();await bgCameraScanner.stop().catch(()=>{});$('bgpCamera').innerHTML='';await bikeGuruScanQr()},()=>{})}catch(e){toast('Camera could not start: '+(e.message||e))}
+}
+async function bikeGuruRedeem(){let pts=Number($('bgpRedeemPoints').value);if(!(pts>0)){toast('Enter redeem points');return}let r=await sb.rpc('bike_guru_member_request_redemption',{p_session_token:bikeGuruSession,p_points:pts});if(r.error){toast(r.error.message);return}$('bgpRedeemPoints').value='';toast('Redemption request submitted');await loadBikeGuruPortalDashboard()}
+async function bikeGuruSaveProfile(){let r=await sb.rpc('bike_guru_update_my_profile',{p_session_token:bikeGuruSession,p_garage_name:$('bgpProfileGarage').value.trim()||null,p_pan_number:$('bgpProfilePan').value.trim().toUpperCase()||null,p_upi_id:$('bgpProfileUpi').value.trim()||null,p_address:$('bgpProfileAddress').value.trim()||null});if(r.error){toast(r.error.message);return}toast('Profile updated');await loadBikeGuruPortalDashboard()}
+async function bikeGuruProfileChangePin(){let a=$('bgpChangePin').value,b=$('bgpChangePin2').value;if(!bgPinOK(a)){toast('PIN must be 4–6 digits');return}if(a!==b){toast('PIN confirmation does not match');return}let r=await sb.rpc('bike_guru_change_pin',{p_session_token:bikeGuruSession,p_new_pin:a});if(r.error){toast(r.error.message);return}$('bgpChangePin').value=$('bgpChangePin2').value='';toast('PIN changed')}
+async function bikeGuruForgotPin(){let mobile=bgMobile($('bgfMobile').value);if(mobile.length!==10){$('bgfMsg').textContent='Enter valid 10 digit mobile';return}let r=await sb.rpc('bike_guru_request_pin_reset',{p_mobile:mobile});$('bgfMsg').textContent=r.error?r.error.message:'Reset request sent to Admin.'}
+async function bikeGuruChangePin(){let a=$('bgpNewPin').value,b=$('bgpNewPin2').value;if(!bgPinOK(a)){toast('PIN must be 4–6 digits');return}if(a!==b){toast('PIN confirmation does not match');return}let r=await sb.rpc('bike_guru_change_pin',{p_session_token:bikeGuruSession,p_new_pin:a});if(r.error){toast(r.error.message);return}toast('PIN changed');await loadBikeGuruPortalDashboard()}
+async function bikeGuruPortalLogout(){if(bikeGuruSession)await sb.rpc('bike_guru_logout',{p_session_token:bikeGuruSession});localStorage.removeItem(BG_SESSION_KEY);bikeGuruSession='';bikeGuruPortalMember=null;showBikeGuruPortal()}
+async function loadBikeGuruPinResetRequests(){
+ if(currentUser?.role!=='ADMIN'||!$('bgPinResetRequests'))return;
+ let r=await sb.rpc('bike_guru_admin_pin_reset_requests',{p_token:sessionToken});if(r.error){$('bgPinResetRequests').textContent=r.error.message;return}
+ $('bgPinResetRequests').innerHTML=(r.data||[]).map(x=>`<div style="padding:6px 0;border-bottom:1px solid #eee"><b>${x.member_name}</b> • ${x.mobile} • ${x.member_type}<br><span class="tiny">${new Date(x.requested_at).toLocaleString()}</span> <button class="btn secondary" onclick="adminResetBikeGuruPin(${x.request_id},${x.member_id},'${String(x.member_name).replace(/'/g,"\\'")}')">Reset PIN</button></div>`).join('')||'No pending PIN reset requests';
+}
+async function adminResetBikeGuruPin(requestId,memberId,name){let pin=prompt(`Temporary PIN for ${name} (4–6 digits)`);if(pin===null)return;if(!bgPinOK(pin)){toast('PIN must be 4–6 digits');return}let r=await sb.rpc('bike_guru_admin_reset_pin',{p_token:sessionToken,p_member_id:memberId,p_request_id:requestId,p_temp_pin:pin});if(r.error){toast(r.error.message);return}toast('Temporary PIN set. Member must change it after login.');await loadBikeGuruPinResetRequests()}
+async function validateSession(){if(!sessionToken){showLogin();return false}let r=await sb.rpc('pos_validate_session',{p_token:sessionToken});if(r.error||!r.data?.length){localStorage.removeItem(SESSION_KEY);sessionToken='';showLogin();return false}currentUser=r.data[0];applyUserUI();$('loginOverlay').style.display='none';await loadRemote();return true}
+function showLogin(){$('loginOverlay').style.display='flex';$('logoutBtn').classList.add('hidden');$('whoAmI').textContent=''}
+function applyUserUI(){$('whoAmI').textContent=`${currentUser.name||currentUser.username} • ${currentUser.role}`;$('logoutBtn').classList.remove('hidden');document.querySelectorAll('[data-permission]').forEach(e=>e.classList.toggle('hidden',!hasPermission(e.dataset.permission)))}
+async function loadMyPermissions(){if(currentUser?.role==='ADMIN'){currentUser.permissions=['billing','dashboard','customer_report','qr','masters','history','schemes','bikeguru','collections','users'];return}let r=await sb.rpc('pos_get_my_permissions',{p_token:sessionToken});currentUser.permissions=r.error?[]:(r.data||[]).map(x=>x.permission_key||x);if(!currentUser.permissions.length)currentUser.permissions=['billing','history']}
+async function loginUser(){let u=$('loginUsername').value.trim(),p=$('loginPassword').value;if(!u||!p){$('loginMsg').textContent='Enter username and password';return}let r=await sb.rpc('pos_login_user',{p_username:u,p_password:p});if(r.error||!r.data?.length){$('loginMsg').textContent=r.error?.message||'Invalid username/password';return}let x=r.data[0];sessionToken=x.session_token;localStorage.setItem(SESSION_KEY,sessionToken);currentUser={id:x.user_id,username:x.username,name:x.name,role:String(x.role||'').toUpperCase(),permissions:[]};await loadMyPermissions();$('loginOverlay').style.display='none';applyUserUI();await loadRemote();toast('Login successful')}
+async function bootstrapAdmin(){let u=$('loginUsername').value.trim(),p=$('loginPassword').value,n=$('bootName').value.trim();if(!u||!p||!n){$('loginMsg').textContent='Username, password and Admin Name required';return}let r=await sb.rpc('pos_bootstrap_admin',{p_username:u,p_password:p,p_name:n});$('loginMsg').textContent=r.error?r.error.message:'First Admin created. Now tap Login.'}
+async function logoutUser(){if(sessionToken)await sb.rpc('pos_logout_user',{p_token:sessionToken});localStorage.removeItem(SESSION_KEY);sessionToken='';currentUser=null;showLogin()}
+async function loadUsers(){if(currentUser?.role!=='ADMIN')return;let r=await sb.rpc('pos_admin_list_users',{p_token:sessionToken});if(r.error){toast(r.error.message);return}let rows=r.data||[];$('userRows').innerHTML=rows.map(u=>`<tr><td>${u.username}</td><td>${u.name}</td><td>${u.role}</td><td>${u.active?'Yes':'No'}</td><td><button class="btn secondary" onclick='editUser(${JSON.stringify(u)})'>Edit</button> <button class="btn secondary" onclick="resetUserPassword(${u.id},'${u.username}')">Reset</button> <button class="btn red" onclick="deleteUser(${u.id},'${u.username}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="5">No users</td></tr>'}
+function setPermissionChecks(keys=[]){document.querySelectorAll('[data-user-perm]').forEach(x=>x.checked=keys.includes(x.dataset.userPerm))}
+async function editUser(u){$('uId').value=u.id;$('uUsername').value=u.username;$('uName').value=u.name;$('uRole').value=u.role;$('uActive').value=String(u.active);$('uPassword').value='';let r=await sb.rpc('pos_admin_get_user_permissions',{p_token:sessionToken,p_user_id:u.id});setPermissionChecks(r.error?[]:(r.data||[]).map(x=>x.permission_key||x))}
+function clearUserForm(){$('uId').value='';$('uUsername').value='';$('uName').value='';$('uRole').value='POS';$('uActive').value='true';$('uPassword').value='';setPermissionChecks(['billing','history'])}
+async function saveUser(){let id=$('uId').value?+$('uId').value:null,u=$('uUsername').value.trim(),n=$('uName').value.trim(),role=$('uRole').value,active=$('uActive').value==='true',pwd=$('uPassword').value;if(!u||!n||(!id&&!pwd)){toast('Username, name and password required for new user');return}let r=await sb.rpc('pos_admin_save_user',{p_token:sessionToken,p_id:id,p_username:u,p_name:n,p_role:role,p_active:active,p_password:pwd||null});if(r.error){toast(r.error.message);return}let savedId=Number(r.data||id);if(!savedId){let q=await sb.rpc('pos_admin_list_users',{p_token:sessionToken});savedId=Number((q.data||[]).find(x=>String(x.username).toUpperCase()===u.toUpperCase())?.id||0)}let perms=[...document.querySelectorAll('[data-user-perm]:checked')].map(x=>x.dataset.userPerm);if(role==='ADMIN')perms=['billing','dashboard','customer_report','qr','masters','history','schemes','bikeguru','collections','users'];if(savedId){let pr=await sb.rpc('pos_admin_set_user_permissions',{p_token:sessionToken,p_user_id:savedId,p_permissions:perms});if(pr.error){toast('User saved, permission save failed: '+pr.error.message);return}}clearUserForm();await loadUsers();toast('User + module access saved')}
+async function deleteUser(id,u){if(!confirm(`Delete user ${u}?`))return;let r=await sb.rpc('pos_admin_delete_user',{p_token:sessionToken,p_id:id});if(r.error){toast(r.error.message);return}await loadUsers();toast('User deleted')}
+async function resetUserPassword(id,u){let p=prompt(`New password for ${u}`);if(!p)return;let r=await sb.rpc('pos_admin_reset_password',{p_token:sessionToken,p_id:id,p_new_password:p});if(r.error){toast(r.error.message);return}toast('Password reset')}
+
+async function searchBillsAdvanced(){
+ let r=await sb.rpc('pos_search_bills',{p_token:sessionToken,p_bill_no:$('bsBillNo').value.trim()||null,p_customer:$('bsCustomer').value.trim()||null,p_mobile:$('bsMobile').value.trim()||null,p_qr_serial:$('bsQr').value.trim()||null,p_from_date:$('bsFrom').value||null,p_to_date:$('bsTo').value||null});
+ if(r.error){toast('Bill search failed: '+r.error.message);return}
+ $('billSearchRows').innerHTML=(r.data||[]).map(x=>`<tr><td>${x.bill_no||''}</td><td>${x.bill_date?new Date(x.bill_date).toLocaleString():''}</td><td>${x.customer_name||x.customer_code||'Walk-in'}${x.mobile?'<div class="tiny">'+x.mobile+'</div>':''}</td><td>${money(x.bill_amount||0)}</td><td>${money(x.paid_amount||0)}</td><td>${money(x.balance_amount||0)}</td><td>${x.status||''}</td><td><button class="btn secondary" onclick="openBillFromSearch('${x.bill_no}')">Open</button> <button class="btn secondary" onclick="reprintBillFromSearch('${x.bill_no}')">Reprint</button> ${x.customer_code?`<button class="btn secondary" onclick="showBillCustomerHistory('${x.bill_no}')">Ledger</button> <button class="btn secondary" onclick="receiveBalanceFromBill('${x.bill_no}')">Receive Balance</button>`:''} ${x.has_returnable_qr?`<button class="btn secondary" onclick="startReturnFromBill('${x.bill_no}')">Return</button>`:''}</td></tr>`).join('')||'<tr><td colspan="8">No matching bills</td></tr>';
+}
+function clearBillSearch(){['bsBillNo','bsCustomer','bsMobile','bsQr','bsFrom','bsTo'].forEach(id=>$(id).value='');$('billSearchRows').innerHTML='<tr><td colspan="8">Enter search criteria.</td></tr>'}
+function openBillFromSearch(no){let b=db.bills.find(x=>x.bill_no===no||x.billNo===no);if(!b){toast('Load/refresh saved bills first');return}openBill(b)}
+function reprintBillFromSearch(no){let b=db.bills.find(x=>x.bill_no===no||x.billNo===no);if(!b){toast('Load/refresh saved bills first');return}openBill(b);setTimeout(()=>window.print(),150)}
+async function startReturnFromBill(no){let b=await fetchBill(no);if(b)openedBill=b;showPage('salesReturn');if($('returnBillContext'))$('returnBillContext').innerHTML=`Return against Bill <b>${no}</b>${b?' • '+(b.customerName||b.customerCode||''):''}`;if($('creditCustomer')&&b?.customerCode)$('creditCustomer').value=b.customerCode;if($('returnQr'))$('returnQr').focus();toast('Scan/enter QR from bill '+no)}
+let customerSalesReportData=[];
+async function loadCustomerSalesReport(){
+ if(currentUser?.role!=='ADMIN'){toast('Admin only');return}
+ let f=$('crFrom').value||localDate(),t=$('crTo').value||localDate(),q=$('crCustomer').value.trim()||null;
+ let r=await sb.rpc('pos_customer_sales_outstanding_report',{p_token:sessionToken,p_from_date:f,p_to_date:t,p_customer:q});
+ if(r.error){customerSalesReportData=[];toast('Customer report failed: '+r.error.message);return}
+ customerSalesReportData=r.data||[];
+ let z=customerSalesReportData.reduce((a,x)=>{a.purchase+=Number(x.purchase_amount||0);a.cash+=Number(x.cash_received||0);a.online+=Number(x.online_received||0);a.old+=Number(x.old_balance_receipt||0);a.ret+=Number(x.return_amount||0);a.ref+=Number(x.refunded_money||0);a.out+=Number(x.current_outstanding||0);a.credit+=Number(x.available_credit||0);return a},{purchase:0,cash:0,online:0,old:0,ret:0,ref:0,out:0,credit:0});
+ $('crSummary').innerHTML=`Customers <b>${customerSalesReportData.length}</b> • Purchase <b>${money(z.purchase)}</b> • Cash ${money(z.cash)} • Online/UPI ${money(z.online)} • Old Balance Receipt ${money(z.old)} • Return ${money(z.ret)} • Refunded ${money(z.ref)} • Current Outstanding <b>${money(z.out)}</b> • Available Credit <b>${money(z.credit)}</b>`;
+ $('crRows').innerHTML=customerSalesReportData.map(x=>`<tr><td><b>${x.customer_name||x.customer_code||''}</b><div class="tiny">${x.customer_code||''}${x.mobile?' • '+x.mobile:''}</div></td><td>${money(x.purchase_amount||0)}</td><td>${money(x.cash_received||0)}</td><td>${money(x.online_received||0)}</td><td>${money(x.old_balance_receipt||0)}</td><td>${money(x.return_amount||0)}</td><td>${money(x.refunded_money||0)}</td><td>${money(x.current_outstanding||0)}</td><td>${money(x.available_credit||0)}</td><td><button class="btn secondary" onclick="openCustomerStatementFromReport('${x.customer_code||''}')">Statement</button></td></tr>`).join('')||'<tr><td colspan="10">No data</td></tr>';
+}
+function openCustomerStatementFromReport(code){showPage('customerStatement');if($('stmtCustomer'))$('stmtCustomer').value=code;if($('stmtFrom'))$('stmtFrom').value=$('crFrom').value;if($('stmtTo'))$('stmtTo').value=$('crTo').value;loadCustomerStatement()}
+function downloadCustomerSalesReport(){
+ if(!customerSalesReportData.length){toast('Load report first');return}
+ let rows=customerSalesReportData.map(x=>({
+  "Customer Code":x.customer_code||"",
+  "Customer Name":x.customer_name||"",
+  "Mobile":x.mobile||"",
+  "Purchase Amount":Number(x.purchase_amount||0),
+  "Cash Received":Number(x.cash_received||0),
+  "Online/UPI Received":Number(x.online_received||0),
+  "Old Balance Receipt":Number(x.old_balance_receipt||0),
+  "Return Amount":Number(x.return_amount||0),
+  "Money Refunded":Number(x.refunded_money||0),
+  "Current Outstanding":Number(x.current_outstanding||0),
+  "Available Credit":Number(x.available_credit||0)
+ }));
+ let ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();
+ ws["!cols"]=[{wch:16},{wch:28},{wch:15},{wch:16},{wch:16},{wch:20},{wch:20},{wch:16},{wch:18},{wch:20},{wch:18}];
+ XLSX.utils.book_append_sheet(wb,ws,"Customer Report");
+ let f=$('crFrom').value||localDate(),t=$('crTo').value||localDate();
+ XLSX.writeFile(wb,`ABS_Customer_Sales_Outstanding_${f}_to_${t}.xlsx`);
+}
+async function loadPosDashboard(){
+ if(currentUser?.role!=='ADMIN'){toast('Admin only');return}
+ let f=$('dashFrom')?.value||localDate(),t=$('dashTo')?.value||localDate();
+ if($('dashFrom')&&!$('dashFrom').value)$('dashFrom').value=f;if($('dashTo')&&!$('dashTo').value)$('dashTo').value=t;
+ if(f>t){toast('From Date cannot be after To Date');return}
+ let r=await sb.rpc('pos_dashboard_summary_range',{p_token:sessionToken,p_from_date:f,p_to_date:t});if(r.error){toast('Dashboard load failed: '+r.error.message);return}
+ let x=Array.isArray(r.data)?r.data[0]:r.data;if(!x)return;
+ let cards=[['Total Bills',x.total_bills||0],['Gross Sale',money(x.gross_sale||0)],['Bill Discount',money(x.bill_discount||0)],['Net Sale',money(x.net_sale||0)],['Cash Received',money(x.cash_received||0)],['Online/UPI',money(x.online_received||0)],['Credit Used',money(x.credit_used||0)],['New Outstanding',money(x.new_outstanding||0)],['Old Balance Collection',money(x.old_balance_collection||0)],['Sales Return',money(x.sales_return||0)],['Returned Money',money(x.returned_money||0)],['Net Collection',money(x.net_collection||0)]];
+ $('dashCards').innerHTML=cards.map(c=>`<div class="card" style="margin:0"><div class="tiny">${c[0]}</div><b style="font-size:18px">${c[1]}</b></div>`).join('');
+ $('dashPayment').innerHTML=`Cash received <b>${money(x.cash_received||0)}</b><br>Online/UPI received <b>${money(x.online_received||0)}</b><br>Cash refunded <b>${money(x.cash_refunded||0)}</b><br>Online/UPI refunded <b>${money(x.online_refunded||0)}</b><br>Gross collection <b>${money(x.gross_collection||0)}</b><br>Net collection <b>${money(x.net_collection||0)}</b>`;
+ $('dashTopItems').innerHTML=(x.top_items||[]).map(i=>`<tr><td>${i.item_name||i.item_code||''}<div class="tiny">${i.item_code||''}</div></td><td>${i.qty||0}</td><td>${money(i.net_sale||0)}</td></tr>`).join('')||'<tr><td colspan="3">No sales</td></tr>';
+ $('dashRecentBills').innerHTML=(x.recent_bills||[]).map(b=>`<tr><td>${b.bill_no||''}</td><td>${b.bill_date?new Date(b.bill_date).toLocaleTimeString():''}</td><td>${b.customer_name||b.customer_code||'Walk-in'}</td><td>${money(b.net_amount||0)}</td><td>${money(b.paid_amount||0)}</td><td>${money(b.balance_amount||0)}</td><td>${b.status||''}</td></tr>`).join('')||'<tr><td colspan="7">No bills</td></tr>';
+}
+function renderHistory(){let q=($('historySearch').value||'').toLowerCase(),d=$('historyDate')?.value||'';let list=db.bills.filter(b=>smartMatch(q,b.bill,b.customerName,b.customerMobile,b.customerCode)&&(!d||localDateFrom(b.at)===d));$('historyRows').innerHTML=list.map(b=>`<tr><td><span class="clicklink" onclick="previewBillPDF('${b.bill}')">${b.bill}</span></td><td>${new Date(b.at).toLocaleString()}</td><td>${b.customerName}</td><td>${b.paymentMethod}</td><td><b>${money(b.total)}</b></td><td>${money(b.paidAmount)}</td><td>${money(Math.max(0,b.total-b.paidAmount))}</td><td>${b.status||'ACTIVE'}</td><td><button class="btn green" onclick="previewBillPDF('${b.bill}')">PDF</button> ${b.customerCode?`<button class="btn secondary" onclick="showBillCustomerHistory('${b.bill}')">Ledger</button> <button class="btn orange" onclick="receiveBalanceFromBill('${b.bill}')">Receive Balance</button>`:''}</td></tr>`).join('')||'<tr><td colspan="9">No bills</td></tr>'}
+async function previewBillPDF(no){let b=await fetchBill(no);if(!b){toast('Bill not found');return}let {jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'});doc.setFontSize(16);doc.text('ABS CORP',105,15,{align:'center'});doc.setFontSize(11);doc.text('POS SALES INVOICE',105,21,{align:'center'});doc.text(`Bill: ${b.bill}`,15,31);doc.text(`Date: ${new Date(b.at).toLocaleString()}`,15,37);doc.text(`Customer: ${b.customerName}`,15,43);if(b.customerMobile)doc.text(`Mobile: ${b.customerMobile}`,15,49);let y=59;doc.setFont(undefined,'bold');doc.text('Item',15,y);doc.text('Qty',115,y);doc.text('Rate',140,y);doc.text('Amount',170,y);doc.setFont(undefined,'normal');y+=6;b.lines.forEach(l=>{if(y>275){doc.addPage();y=20}doc.text(`${l.itemCode} - ${String(l.name||'').slice(0,38)}`,15,y);doc.text(String(l.qty),115,y);doc.text(Number(l.rate||0).toFixed(2),140,y);doc.text(Number(l.amount||0).toFixed(2),170,y);y+=6});y+=4;doc.setFont(undefined,'bold');doc.text(`Bill Amount: ${money(b.total)}`,195,y,{align:'right'});y+=6;doc.text(`Paid: ${money(b.paidAmount)}`,195,y,{align:'right'});y+=6;doc.text(`Balance: ${money(Math.max(0,b.total-b.paidAmount))}`,195,y,{align:'right'});let blob=doc.output('blob'),url=URL.createObjectURL(blob);$('pdfFrame').src=url;$('pdfDownload').href=url;$('pdfDownload').download=`${b.bill}.pdf`;$('pdfModal').classList.add('open')}
+function closePdfModal(){$('pdfModal').classList.remove('open');$('pdfFrame').src='about:blank'}
+$('qrDate').value=localDate();if($('schemeSlabs')&&!$('schemeSlabs').children.length)addSchemeSlab();if($('schemeFrom')){let d=new Date(),y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0');$('schemeFrom').value=`${y}-${m}-01`;$('schemeTo').value=localDate()}validateSession();
+
+</script>
+</body></html>
